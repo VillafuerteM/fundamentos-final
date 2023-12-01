@@ -67,7 +67,7 @@ denominador = sqrt((0.26*0.74)/310)
 p_value <- pnorm(numerador/denominador)
 ```
 
-```{r include=FALSE}
+```{r echo=FALSE}
 print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 ```
 
@@ -75,14 +75,25 @@ print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 
 **Enfoque bayesiano**: El problema trata de la estimación de una proporción, llamémosle $\theta$ donde $\theta$ es la proporción de adultos que terminaron la preparatoria en el condado específico de Illinois. Podemos asumir una a priori $P(\theta)$ que siga la información inicial que nos dice que ese porcentaje dentro de Illinois es de aproximadamente $26\%$, entonces usaremos una **Beta** que después de prueba y error tiene los parámetros $(4,11)$ que tiene de media $0.26$ sin estar muy concentrada.
 
-```{r fig.cap = "Distribución a priori: Beta (4,11)"}
+```{r}
 set.seed(156057)
 sim_inicial <- tibble(theta = stats::rbeta(10000,4,11))
+```
+
+```{r echo=FALSE, fig.cap = "Distribución a priori: Beta (4,11)", warning=FALSE}
 ggplot(sim_inicial) + 
-  geom_histogram(aes(x = theta, y = ..density..), bins = 15, color = "lightblue") + 
-  geom_vline(xintercept = 0.26, color = "red") +
-  labs(title = "Distribución Inicial", subtitle = "Beta(4,11)") + 
-  xlab("Theta") + ylab("Densidad") + 
+  geom_histogram(aes(x = theta, 
+                     y = ..density..), 
+                 bins = 15, 
+                 fill = "#F8766D",
+                 alpha=0.5) + 
+  geom_vline(xintercept = 0.26, 
+             color = "red",
+             linetype='dashed') +
+  labs(title = "Distribución Inicial", 
+       subtitle = "Beta(4,11)") + 
+  xlab("Theta") + 
+  ylab("Densidad") + 
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
@@ -103,15 +114,25 @@ sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>%
   mutate(dist = "posterior")
 
 sims <- bind_rows(sim_inicial, sim_posterior)
+```
 
+```{r,echo=FALSE, fig.cap = "Inicial vs. Posterior"}
 ggplot(sims, aes(x = theta, fill = dist)) +
-  geom_histogram(aes(x = theta), bins = 30,
-                 alpha = 0.5, position = "identity") +
-  geom_vline(xintercept = 0.26, color = "red") +
-  geom_vline(xintercept = 0.2246, color = "blue") +
+  geom_histogram(aes(x = theta), 
+                 bins = 30,
+                 alpha = 0.5, 
+                 position = "identity") +
+  geom_vline(xintercept = 0.26, 
+             color = "red",
+             linetype='dashed') +
+  geom_vline(xintercept = 0.2246, 
+             color = "blue",
+             linetype='dashed') +
   labs(title = "Distribución Inicial y Posterior",
-       subtitle = "Beta(4,11) vs. Beta(73,252)") + 
-  xlab("theta") + ylab("Densidad") + 
+       subtitle = "Beta(4,11) vs. Beta(73,252)",
+       fill='Distribución') + 
+  xlab("theta") + 
+  ylab("Densidad") + 
   theme_pubclean(base_size = 12)
 ```
 
@@ -123,7 +144,7 @@ ggplot(sims, aes(x = theta, fill = dist)) +
 
 -   Máxima verosimilitud: $\frac{69}{310} = 0.2226$
 
-Asímismo podemos obtener intervalos de confianza fácilmente debido a nuestra distribución "conocida"
+Asímismo podemos obtener intervalos de credibilidad fácilmente debido a nuestra distribución "conocida"
 
 ```{r}
 set.seed(156057)
@@ -166,7 +187,7 @@ $$
 \lambda = 2[l(\hat{p})-l(p_0)]
 $$
 
-```{r, fig.cap = "Distribución Lambda"}
+```{r}
 set.seed(156057)
 experimentos <- 556
 observaciones <- c(315, 101, 108, 32)
@@ -192,15 +213,26 @@ lambda_obs <- lambda(experimentos, observaciones, prob_nulas)
 new_df <- data.frame(simul_nula)
 sims_tbl <- data.frame(sim_x = I(as.list(new_df))) 
 sims_tbl <- dplyr::mutate(sims_tbl,
-                          lambda = map_dbl(sim_x, ~lambda(experimentos, 
-                                                          .x, 
-                                                          prob_nulas)))
+                          lambda = map_dbl(sim_x, 
+                                           ~lambda(experimentos,
+                                                   .x,
+                                                   prob_nulas)))
+```
+
+```{r, echo=FALSE, fig.cap = "Distribución Lambda"}
 ggplot(sims_tbl, aes(x = lambda)) + 
-  geom_histogram(aes(x = lambda, y = ..density..), 
-                 bins = 30, color = "lightblue") +
-  geom_vline(xintercept = lambda_obs, color = "red") +  
-  labs(title = "Distribución Lambda", subtitle = "cociente de verosimilitud") + 
-  xlab("Lambda") + ylab("Densidad") + 
+  geom_histogram(aes(x = lambda, 
+                     y = ..density..), 
+                 bins = 30, 
+                 fill ="cyan4", 
+                 alpha=0.4) +
+  geom_vline(xintercept = lambda_obs, 
+             color = "red", 
+             linetype='dashed') +  
+  labs(title = "Distribución Lambda", 
+       subtitle = "Cociente de verosimilitud") + 
+  xlab("Lambda") + 
+  ylab("Densidad") + 
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
@@ -208,7 +240,11 @@ Calculamos nuestro valor p.
 
 ```{r}
 valor_p <- mean(sims_tbl$lambda >= lambda_obs)
-print(paste0("El valor p asociado a esta prueba es: ", round(valor_p,2)))
+```
+
+```{r, include=FALSE}
+print(paste0("El valor p asociado a esta prueba es: ", 
+             round(valor_p,2)))
 ```
 
 Por lo que **no encontramos evidencia encontra de la hipótesis nula**. Hace sentido ya que desde la Lambda observada el valor es cercano a 0, por lo que la nula tiene bastante verosimilitud respecto a lo que los datos indican.
