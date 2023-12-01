@@ -1,37 +1,160 @@
 ---
-title: "Final Fundamentos 2023"
-output: html_document
+title: "Final-2023" 
+author: 
+  - "Mariano Villafuerte -156057" 
+  - "Mario Medina - 156940"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+header-includes:
+  - \usepackage{placeins}
+  - \usepackage{rotating}
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: TRUE
+    toc_depth: 3
+    number_sections: TRUE
 ---
 
-Un reporte con las respuestas se deberá enviar por correo electrónico a más 
-tardar el martes 5 a las 21:00 horas.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.height = 4,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE,
+	digits = 3,
+	width = 48
+)
 
-Instrucciones: 
+knitr::opts_chunk$set(echo = TRUE)
+knitr::knit_hooks$set(plot = function(x, options)  {
+  paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
+})
+```
 
-- En las siguientes preguntas describe tus procedimientos y escribe las
-respuestas explícitamente (que no haya necesidad de correr código para 
-obtenerlas). 
+```{r librerias_lectura, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(data.table)
+library(patchwork)
+library(kableExtra)
+library(knitr)
+library(ggpubr)
+library(tidyr)
+library(fivethirtyeight)
+library(nullabor)
+wd <- "C:/Users/mario/OneDrive/Documentos/fundamentos-final"
+setwd(wd)
+set.seed(156057)
+options(scipen=999)
+```
 
-- Incluye el código.
+# Pruebas de hipótesis
 
-- No está permitido discutir el exámen fuera de su equipo.
+## Preparatoria en Illinois
 
-- Para dudas (que no deben incluir info. de la respuesta) se preguntará en el 
-canvas del grupo.
+### Contexto 
+De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han  terminado la preparatoria. Un investigador sospecha que este porcentaje es menor en un condado particular del estado. Obtiene una muestra aleatoria de  dicho condado y encuentra que 69 de 310 (22.26%) personas en la muestra han completado la preparatoria. Estos resultados soportan su hipótesis? (describe tu elección de prueba de hipótesis, valor p y conclusión).
 
-- Consideren el material de visualización al hacer sus gráficas y reportar sus
-resultados.
+Podemos tomar 2 enfoques, a continuación explicamos el porqué
 
-## 1. Pruebas de hipótesis
+- **Prueba con estadístico Z:** dado que hablamos de proporciones sabemos cuál es el error estándar de una proporción, podremos calcular el estadístico Z.  
+- **Enfoque bayesiano:** el 26% nos ayuda a definir una a priori y con los datos podemos generar una posterior. No es un cálculo de prueba de hipótesis tal cual pero podemos obtener intervalos de confianza que nos ayuden a determinar si realmente es significativamente menor. 
 
-1.1 De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han 
-terminado la preparatoria. Un investigador sospecha que este porcentaje es
-menor en un condado particular del estado. Obtiene una muestra aleatoria de 
-dicho condado y encuentra que 69 de 310 personas en la muestra han completado
-la preparatoria. Estos resultados soportan su hipótesis? (describe tu elección de
-prueba de hipótesis, valor p y conclusión).
+Empezamos con la **prueba del estadístico Z**, nuestra prueba de hipótesis la podemos definir como (1 cola)
 
+$$
+\begin{aligned}
+&H_{0}: \hat{\theta}=0.26 \\
+&H_{1}: \hat{\theta}<0.26
+\end{aligned}
+$$
+Y el estadístico se vería de la siguiente forma. Sabemos que $\hat{\theta}=\frac{69}{310}$
 
+$$
+Z = \frac{\hat{\theta}-0.26}{\sqrt{\frac{0.26(1-0.26)}{310}}} = -1.502016
+$$
+
+El valor-p considerando que es de una cola sería, en específico la izquierda
+
+$$
+p-value=P(Z<z)
+$$
+el cálculo se ve de la siguiente manera. 
+
+```{r}
+numerador = (69/310)-0.26
+denominador = sqrt((0.26*0.74)/310)
+p_value <- pnorm(numerador/denominador)
+print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
+```
+
+La conclusión es que no es significativo al 95% de confianza. Debido a que es mayor al valor crítico de 5%, por lo que no hay suficiente evidencia para rechazar la hipótesis nula. 
+
+**Enfoque bayesiano: ** El problema trata de la estimación de una proporción, llamémosle $\theta$ donde $\theta$ es la proporción de adultos que terminaron la preparatoria en el condado específico de Illinois. Podemos asumir una a priori $P(\theta)$ que siga la información inicial que nos dice que ese porcentaje dentro de Illinois es de aproximadamente 26%, entonces usaremos una **Beta** que después de prueba y error tiene los parametros *(4,11)* que tiene de media 0.26 sin estar muy concentrada. 
+
+```{r fig.cap = "Distribución a priori: Beta (4,11)"}
+set.seed(156057)
+sim_inicial <- tibble(theta = stats::rbeta(10000,4,11))
+ggplot(sim_inicial) + 
+  geom_histogram(aes(x = theta, y = ..density..), bins = 15, color = "lightblue") + 
+  geom_vline(xintercept = 0.26, color = "red") +
+  labs(title = "Distribución Inicial", subtitle = "Beta(4,11)") + 
+  xlab("Theta") + ylab("Densidad") + 
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+Los datos del condado nos dicen que de 310 individuos únicamente tenemos 69 con preparatoria concluida (éxitos) entonces nuestra posterior queda de la siguiente manera 
+
+$$
+\begin{aligned}
+&P(\theta|X) \propto P(X|\theta)P(\theta) \\
+&P(\theta|X) \propto \theta^{69+3}(1-\theta)^{241+10} \\
+&P(\theta|X) \propto \theta^{72}(1-\theta)^{251}
+\end{aligned}
+$$
+
+Obtenemos los siguientes histogramas. 
+
+```{r posterior, fig.cap = "Inicial vs. Posterior"}
+set.seed(156057)
+sim_inicial <- sim_inicial %>% mutate(dist = "inicial")
+sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>% 
+  mutate(dist = "posterior")
+
+sims <- bind_rows(sim_inicial, sim_posterior)
+
+ggplot(sims, aes(x = theta, fill = dist)) +
+  geom_histogram(aes(x = theta), bins = 30,
+                 alpha = 0.5, position = "identity") +
+  geom_vline(xintercept = 0.26, color = "red") +
+  geom_vline(xintercept = 0.2246, color = "blue") +
+  labs(title = "Distribución Inicial y Posterior",
+       subtitle = "Beta(4,11) vs. Beta(73,252)") + 
+  xlab("theta") + ylab("Densidad") + 
+  theme_pubclean(base_size = 12)
+```
+
+**Un estimador puntual** es la media de la distribuciones, que al ser una Beta se obtiene como $\frac{a}{a+b}$
+
+- Dist. Inicial: $\frac{4}{4+11} = 0.267$
+- Dist. Posterior: $\frac{73}{73+252} = 0.2246$
+- Máxima verosimilitud: $\frac{69}{310} = 0.2226$
+
+Asímismo podemos obtener intervalos de confianza fácilmente debido a nuestra distribución "conocida" 
+
+```{r}
+set.seed(156057)
+paste0("Intervalo dist. posterior: (",
+       round(qbeta(0.025, shape1 = 73, shape2 = 252),2),",",
+       round(qbeta(0.975, shape1 = 73, shape2 = 252),2),")")
+```
+
+Dado la información anterior el **intervalo de confianza al 95% de la posterior sí incluye el valor del 26%. Por lo que todavía no es del todo "aceptable"** que la proporción del condado sea significativamente menor al del estado de Illinois
+
+La conclusión de este enfoque es el mismo que en el primero. 
+
+## Chicaros de Mendel
 
 1.2 Mendel criaba chícharos de semillas lisas amarillas y de semillas
 corrugadas verdes. Éstas daban lugar a 4 tipos de descendientes: amarrillas lisas, amarillas corrugadas, verdes lisas y verdes corrugadas. El número de cada una

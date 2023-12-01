@@ -11,6 +11,22 @@ format:
       text: '\addtokomafont{disposition}{\rmfamily} ' 
 ---
 
+```{r librerias_lectura, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(data.table)
+library(patchwork)
+library(kableExtra)
+library(knitr)
+library(ggpubr)
+library(tidyr)
+library(fivethirtyeight)
+library(nullabor)
+wd <- "C:/Users/mario/OneDrive/Documentos/fundamentos-final"
+setwd(wd)
+set.seed(156057)
+options(scipen=999)
+```
+
 ## 1. Pruebas de hipótesis
 
 **1.1** De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han
@@ -25,9 +41,123 @@ la preparatoria. Estos resultados soportan su hipótesis? (describe tu elección
 
 prueba de hipótesis, valor p y conclusión).
 
-```{r}
+**Respuesta:**
 
+Podemos tomar 2 enfoques, a continuación explicamos el porqué
+
+-   **Prueba con estadístico Z**: dado que hablamos de proporciones sabemos cuál es el error estándar de una proporción, podremos calcular el estadístico Z.
+
+-   **Enfoque bayesiano:** el 26% nos ayuda a definir una a priori y con los datos podemos generar una posterior. No es un cálculo de prueba de hipótesis tal cual pero podemos obtener intervalos de confianza que nos ayuden a determinar si realmente es significativamente menor.
+
+Empezamos con la **prueba del estadístico Z**, nuestra prueba de hipótesis la podemos definir como (1 cola)
+
+$$
+\\begin{aligned}
+
+&H\_{0}: \\hat{\\theta}=0.26 \\\\
+
+&H\_{1}: \\hat{\\theta}\<0.26
+
+\\end{aligned}
+$$
+
+Y el estadístico se vería de la siguiente forma. Sabemos que \$\\hat{\\theta}=\\frac{69}{310}\$
+
+\$\$
+
+Z = \\frac{\\hat{\\theta}-0.26}{\\sqrt{\\frac{0.26(1-0.26)}{310}}} = -1.502016
+
+\$\$
+
+El valor-p considerando que es de una cola sería, en específico la izquierda
+
+\$\$
+
+p-value=P(Z\<z)
+
+\$\$
+
+el cálculo se ve de la siguiente manera.
+
+```{r}
+numerador = (69/310)-0.26
+denominador = sqrt((0.26*0.74)/310)
+p_value <- pnorm(numerador/denominador)
+print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 ```
+
+**La conclusión es que no es significativo al 95% de confianza**. Debido a que es mayor al valor crítico de 5%, por lo que no hay suficiente evidencia para rechazar la hipótesis nula.
+
+**Enfoque bayesiano**: El problema trata de la estimación de una proporción, llamémosle \$\\theta\$ donde \$\\theta\$ es la proporción de adultos que terminaron la preparatoria en el condado específico de Illinois. Podemos asumir una a priori \$P(\\theta)\$ que siga la información inicial que nos dice que ese porcentaje dentro de Illinois es de aproximadamente 26%, entonces usaremos una **Beta** que después de prueba y error tiene los parametros *(4,11)* que tiene de media 0.26 sin estar muy concentrada.
+
+```{r fig.cap = "Distribución a priori: Beta (4,11)"}
+set.seed(156057)
+sim_inicial <- tibble(theta = stats::rbeta(10000,4,11))
+ggplot(sim_inicial) + 
+  geom_histogram(aes(x = theta, y = ..density..), bins = 15, color = "lightblue") + 
+  geom_vline(xintercept = 0.26, color = "red") +
+  labs(title = "Distribución Inicial", subtitle = "Beta(4,11)") + 
+  xlab("Theta") + ylab("Densidad") + 
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+Los datos del condado nos dicen que de 310 individuos únicamente tenemos 69 con preparatoria concluida (éxitos) entonces nuestra posterior queda de la siguiente manera
+
+\$\$
+
+\\begin{aligned}
+
+&P(\\theta\|X) \\propto P(X\|\\theta)P(\\theta) \\\\
+
+&P(\\theta\|X) \\propto \\theta\^{69+3}(1-\\theta)\^{241+10} \\\\
+
+&P(\\theta\|X) \\propto \\theta\^{72}(1-\\theta)\^{251}
+
+\\end{aligned}
+
+\$\$
+
+Obtenemos los siguientes histogramas.
+
+```{r posterior, fig.cap = "Inicial vs. Posterior"}
+set.seed(156057)
+sim_inicial <- sim_inicial %>% mutate(dist = "inicial")
+sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>% 
+  mutate(dist = "posterior")
+
+sims <- bind_rows(sim_inicial, sim_posterior)
+
+ggplot(sims, aes(x = theta, fill = dist)) +
+  geom_histogram(aes(x = theta), bins = 30,
+                 alpha = 0.5, position = "identity") +
+  geom_vline(xintercept = 0.26, color = "red") +
+  geom_vline(xintercept = 0.2246, color = "blue") +
+  labs(title = "Distribución Inicial y Posterior",
+       subtitle = "Beta(4,11) vs. Beta(73,252)") + 
+  xlab("theta") + ylab("Densidad") + 
+  theme_pubclean(base_size = 12)
+```
+
+**Un estimador puntual** es la media de la distribuciones, que al ser una Beta se obtiene como \$\\frac{a}{a+b}\$
+
+-   Dist. Inicial: \$\\frac{4}{4+11} = 0.267\$
+
+-   Dist. Posterior: \$\\frac{73}{73+252} = 0.2246\$
+
+-   Máxima verosimilitud: \$\\frac{69}{310} = 0.2226\$
+
+Asímismo podemos obtener intervalos de confianza fácilmente debido a nuestra distribución "conocida"
+
+```{r}
+set.seed(156057)
+paste0("Intervalo dist. posterior: (",
+       round(qbeta(0.025, shape1 = 73, shape2 = 252),2),",",
+       round(qbeta(0.975, shape1 = 73, shape2 = 252),2),")")
+```
+
+Dado la información anterior el **intervalo de confianza al 95% de la posterior sí incluye el valor del 26%. Por lo que todavía no es del todo "aceptable"** que la proporción del condado sea significativamente menor al del estado de Illinois
+
+La conclusión de este enfoque es el mismo que en el primero.
 
 **1.2** Mendel criaba chícharos de semillas lisas amarillas y de semillas
 
@@ -164,7 +294,7 @@ Los datos \*pew_research_center_june_elect_wknd_data.dta\* tienen información d
 ecnuestas realizadas durante la campaña presidencial 2008 de EUA.
 
 ```{r}
-poll_data <- foreign::read.dta("data/pew_research_center_june_elect_wknd_data.dta")
+#poll_data <- foreign::read.dta("data/pew_research_center_june_elect_wknd_data.dta")
 ```
 
 \* Estima el porcentaje de la población de cada estado (excluyendo Alaska, Hawai,
@@ -173,11 +303,11 @@ y DC) que se considera \*very liberal\*, utilizando el estimador de máxima
 
 verosimilitud.
 
- - Grafica en el eje \*x\* el número de encuestas para cada estado y en el eje \*y\*
+-   Grafica en el eje \*x\* el número de encuestas para cada estado y en el eje \*y\*
 
 la estimación de máxima verosimilitud para \*very liberal\*. ¿Qué observas?
 
- - Grafica en el eje \*x\* el porcentaje de votos que obtuvo Obama en la elección
+-   Grafica en el eje \*x\* el porcentaje de votos que obtuvo Obama en la elección
 
 para cada estado y en el eje \*y\* la estimación de máxima verosimilitud para \*very liberal\*. ¿Qué observas? (usa los datos \*2008ElectionResult.csv\*)
 
@@ -189,15 +319,15 @@ independiente para cada estado, sin embargo, utilizarás la misma inicial a lo
 
 largo de todos: \$Beta(8,160)\$.
 
- - Simula de la distribución incial y describe.
+-   Simula de la distribución incial y describe.
 
- - Para dos de los estados: Idaho y Virginia, adicional a calcular la posterior
+-   Para dos de los estados: Idaho y Virginia, adicional a calcular la posterior
 
 usando las propiedades de la familia conjugada, utiliza Stan para hacer la inferencia,
 
 revisa los diagnósticos de convergencia y describe tus observaciones (\$\\hat{R}\$ y \$ESS\$).
 
- - Utiliza la media posterior de cada estado como estimador puntual y repite las
+-   Utiliza la media posterior de cada estado como estimador puntual y repite las
 
 gráficas del inciso anterior.
 
