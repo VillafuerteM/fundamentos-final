@@ -61,13 +61,13 @@ $$
 
 el cálculo se ve de la siguiente manera.
 
-```{r}
+```{r calc_p_value}
 numerador = (69/310)-0.26
 denominador = sqrt((0.26*0.74)/310)
 p_value <- pnorm(numerador/denominador)
 ```
 
-```{r echo=FALSE}
+```{r print_p_value, echo=FALSE}
 print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 ```
 
@@ -75,12 +75,17 @@ print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 
 **Enfoque bayesiano**: El problema trata de la estimación de una proporción, llamémosle $\theta$ donde $\theta$ es la proporción de adultos que terminaron la preparatoria en el condado específico de Illinois. Podemos asumir una a priori $P(\theta)$ que siga la información inicial que nos dice que ese porcentaje dentro de Illinois es de aproximadamente $26\%$, entonces usaremos una **Beta** que después de prueba y error tiene los parámetros $(4,11)$ que tiene de media $0.26$ sin estar muy concentrada.
 
-```{r}
+```{r sim_dist_inicial}
 set.seed(156057)
 sim_inicial <- tibble(theta = stats::rbeta(10000,4,11))
 ```
 
-```{r echo=FALSE, fig.cap = "Distribución a priori: Beta (4,11)", warning=FALSE}
+```{r grafica_dist_inicial}
+#| fig.height = 2.7,
+#| warning=FALSE,
+#| echo=FALSE, 
+#| fig.cap = "Distribución a priori: Beta (4,11)"
+
 ggplot(sim_inicial) + 
   geom_histogram(aes(x = theta, 
                      y = ..density..), 
@@ -97,6 +102,8 @@ ggplot(sim_inicial) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
+{{< pagebreak >}}
+
 Los datos del condado nos dicen que de 310 individuos únicamente tenemos 69 con preparatoria concluida (éxitos) entonces nuestra posterior queda de la siguiente manera
 
 $$
@@ -107,7 +114,7 @@ $$
 
 Obtenemos los siguientes histogramas.
 
-```{r posterior, fig.cap = "Inicial vs. Posterior"}
+```{r posterior}
 set.seed(156057)
 sim_inicial <- sim_inicial %>% mutate(dist = "inicial")
 sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>% 
@@ -116,7 +123,10 @@ sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>%
 sims <- bind_rows(sim_inicial, sim_posterior)
 ```
 
-```{r,echo=FALSE, fig.cap = "Inicial vs. Posterior"}
+```{r graph_post_ini}
+#| echo=FALSE,
+#| fig.cap="Inicial vs. Posterior"
+
 ggplot(sims, aes(x = theta, fill = dist)) +
   geom_histogram(aes(x = theta), 
                  bins = 30,
