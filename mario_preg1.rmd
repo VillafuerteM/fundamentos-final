@@ -56,9 +56,11 @@ options(scipen=999)
 ### Contexto 
 De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han  terminado la preparatoria. Un investigador sospecha que este porcentaje es menor en un condado particular del estado. Obtiene una muestra aleatoria de  dicho condado y encuentra que 69 de 310 (22.26%) personas en la muestra han completado la preparatoria. Estos resultados soportan su hipótesis? (describe tu elección de prueba de hipótesis, valor p y conclusión).
 
+### Respuesta
+
 Podemos tomar 2 enfoques, a continuación explicamos el porqué
 
-- **Prueba con estadístico Z:** dado que hablamos de proporciones sabemos cuál es el error estándar de una proporción, podremos calcular el estadístico Z.  
+- **Prueba con estadístico Z:** dado que hablamos de proporciones sabemos cuál es el error estándar de una proporción, podremos calcular el estadístico Z, dada la naturaleza de la prueba también puede definirse como una prueba de Wald
 - **Enfoque bayesiano:** el 26% nos ayuda a definir una a priori y con los datos podemos generar una posterior. No es un cálculo de prueba de hipótesis tal cual pero podemos obtener intervalos de confianza que nos ayuden a determinar si realmente es significativamente menor. 
 
 Empezamos con la **prueba del estadístico Z**, nuestra prueba de hipótesis la podemos definir como (1 cola)
@@ -156,22 +158,136 @@ La conclusión de este enfoque es el mismo que en el primero.
 
 ## Chicaros de Mendel
 
-1.2 Mendel criaba chícharos de semillas lisas amarillas y de semillas
-corrugadas verdes. Éstas daban lugar a 4 tipos de descendientes: amarrillas lisas, amarillas corrugadas, verdes lisas y verdes corrugadas. El número de cada una
-es multinomial con parámetro $p=(p_1, p_2, p_3, p_4)$. De acuerdo a su teoría de
-herencia este vector de probabilidades es:
-$$p=(9/16,3/16,3/16,1/16)$$
+### Contexto
+Mendel criaba chícharos de semillas lisas amarillas y de semillas corrugadas verdes. Éstas daban lugar a 4 tipos de descendientes: amarrillas lisas, amarillas corrugadas, verdes lisas y verdes corrugadas. El número de cada una es multinomial con parámetro $p=(p_1, p_2, p_3, p_4)$. De acuerdo a su teoría de herencia este vector de probabilidades es:
+
+$$
+p=(9/16,3/16,3/16,1/16)
+$$
+
 A lo largo de $n=556$ experimentos observó $x=(315,101,108,32)$. Utiliza la prueba
 de cociente de verosimilitudes para probar $H_0:p=p_0$ contra $H_0:p\ne p_0$.
 
+### Respuesta
 
+La distribución multinomial para este problema la definimos de la siguiente manera 
 
-1.3. Sean $X_1, ...X_n \sim Poisson(\lambda)$,
+$$
+p(x_1,x_2,x_3,x_4|p_1,p_2,p_3,p_4) = \frac{n!}{x_1!x_2!x_3!x_4!}p_1^{x_1}p_2^{x_2}p_3^{x_3}p_4^{x_4}
+$$
+La primera parte será constante al momento de sacar la log-verosimilitud, por lo que la parte de interes nos queda de la siguiente forma.
 
-* Sea $\lambda_0>0$. ¿Cuál es la prueba Wald para
-$H_0: \lambda = \lambda_0, H_1: \lambda \neq \lambda_0$
+$$
+l(p_1,p_2,p_3,p_4) = \sum_{i=1}^{4}x_{i}log(p_{i})
+$$
+También sabemos que el estimador de máxima verosimilitud para cada $p_{i}$ es $\frac{x_{i}}{n}$
 
-* Si $\lambda_0=1$, $n=20$ y $\alpha = 0.05$. Simula  $X_1, ...X_n \sim Poisson(\lambda_0)$ y realiza la prueba Wald, repite 1000 veces y registra
-el porcentaje de veces que rechazas $H_0$, qué tan cerca te queda el
-error del tipo 1 de $0.05$?
+Para la prueba de hipótesis de cociente de verosimilitud necesitamos calcular la log-verosimilitud bajo la hipotesis nula $p$ y la log verosimilitud utilizando los estimadores de máxima verosimilitud. Lo haremos bajo simulación 
+
+Definimos 
+
+$$
+\lambda = 2[l(\hat{p})-l(p_0)]
+$$
+
+```{r, fig.cap = "Distribución Lambda"}
+set.seed(156057)
+experimentos <- 556
+observaciones <- c(315, 101, 108, 32)
+prob_nulas <- c(9/16,3/16,3/16,1/16)
+simul_nula <- rmultinom(15000, experimentos, prob_nulas)
+
+lambda <- function(n, x, p = prob_nulas){
+  # Estimadores MV
+  #print(paste(x[1],",",x[2],",",x[3],",",x[4]))
+  p1_mv <- x[1]/n
+  p2_mv <- x[2]/n
+  p3_mv <- x[3]/n
+  p4_mv <- x[4]/n
+  # log verosimilitud bajo mv
+  log_p_mv <- x[1]*log(p1_mv)+x[2]*log(p2_mv)+x[3]*log(p3_mv)+x[4]*log(p4_mv)
+  # log verosimilitud bajo nula
+  log_p_nula <- x[1]*log(p[1])+x[2]*log(p[2])+x[3]*log(p[3])+x[4]*log(p[4])
+  lambda <- 2*(log_p_mv - log_p_nula)
+  lambda
+}
+lambda_obs <- lambda(experimentos, observaciones, prob_nulas)
+# Create a new data frame
+new_df <- data.frame(simul_nula)
+sims_tbl <- data.frame(sim_x = I(as.list(new_df))) 
+sims_tbl <- dplyr::mutate(sims_tbl,
+                          lambda = map_dbl(sim_x, ~lambda(experimentos, 
+                                                          .x, 
+                                                          prob_nulas)))
+ggplot(sims_tbl, aes(x = lambda)) + 
+  geom_histogram(aes(x = lambda, y = ..density..), 
+                 bins = 30, color = "lightblue") +
+  geom_vline(xintercept = lambda_obs, color = "red") +  
+  labs(title = "Distribución Lambda", subtitle = "cociente de verosimilitud") + 
+  xlab("Lambda") + ylab("Densidad") + 
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+Calculamos nuestro valor p. 
+
+```{r}
+valor_p <- mean(sims_tbl$lambda >= lambda_obs)
+print(paste0("El valor p asociado a esta prueba es: ", round(valor_p,2)))
+```
+Por lo que **no encontramos evidencia encontra de la hipótesis nula**. Hace sentido ya que desde la Lambda observada el valor es cercano a 0, por lo que la nula tiene bastante verosimilitud respecto a lo que los datos indican. 
+
+## Prueba Wald
+
+### Contexto 
+Sean $X_1, ...X_n \sim Poisson(\lambda)$,
+
+- Sea $\lambda_0>0$. ¿Cuál es la prueba Wald para $H_0: \lambda = \lambda_0, H_1: \lambda \neq \lambda_0$
+- Si $\lambda_0=1$, $n=20$ y $\alpha = 0.05$. Simula  $X_1, ...X_n \sim Poisson(\lambda_0)$ y realiza la prueba Wald, repite 1000 veces y registra el porcentaje de veces que rechazas $H_0$, qué tan cerca te queda el error del tipo 1 de $0.05$?
+
+### Respuesta
+Para el primer inciso, hemos visto varias veces que el mejor estimador para $\lambda$ de una Poisson será la media (MLE). Asimismo hemos visto resultados asintóticos donde el estimador usando medias (MLE) tiene normalidad asintótica dicho esto podemos declarar que 
+
+$$
+W = \frac{\hat{\lambda} - \lambda}{\hat{ee}} \sim N(0,1)
+$$
+Y el **valor-p** asociado para la hipótesis nula de $H_0: \lambda = \lambda_0, H_1: \lambda \neq \lambda_0$ será 
+
+$$
+valor-p \approx P(|Z| > |w|) = 2(1-\Phi(|w|))
+$$
+Ahora si asumimos que $\lambda_0=1$, $n=20$ y $\alpha = 0.05$. Podemos simular los datos de la siguiente manera. Un resultado importante es que como $\lambda$ es estimado con la media, el $\hat{ee}$ puede ser calculado como el error estándar de la media con $\frac{s}{\sqrt{n}}$
+
+```{r}
+set.seed(156057)
+n <- 20
+lambda0 <- 1
+datos_wald <- rpois(n, lambda0)
+p_values <- c()
+for (i in 1:1000) {
+  datos_wald <- rpois(n, lambda0)
+  w_test <- (mean(datos_wald)-lambda0)/(sd(datos_wald)/sqrt(n))
+  p_values[i] <- 2 * (1 - pnorm(abs(w_test)))
+}
+resumen_wald <- data.frame(
+  p_val = p_values
+)
+resume_wald <- resumen_wald %>%
+  dplyr::mutate(rechazo = ifelse(p_val<0.05, 1,0),
+                distancia = abs(0.05-p_val), 
+                point = seq(1,1000,1))
+```
+
+Rechazo el `r mean(resume_wald$rechazo)*100`% de las veces. El **Error del tipo I** es la probabilidad de rechazar hipótesis nula de $H_{0}$ cuando es cierta, es decir que únicamente debemos calcular la distancia de aquellas simulaciones donde rechazamos 
+
+```{r fig.cap = "Distancia de 0.05"}
+ggplot(resume_wald %>% filter(rechazo == 1),
+       aes(x = point, xend = point, 
+           y = 0, yend = distancia, 
+           color = factor(rechazo))) +
+  geom_segment(size = 1) +
+  labs(title = "Distancia al punto crítico",
+       x = "Estimación",
+       y = "distancia a 0.05") +
+  ggpubr::theme_pubclean(base_size = 12)
+```
 
