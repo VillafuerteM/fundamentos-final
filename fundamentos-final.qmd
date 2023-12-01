@@ -252,7 +252,7 @@ Calculamos nuestro valor p.
 valor_p <- mean(sims_tbl$lambda >= lambda_obs)
 ```
 
-```{r, include=FALSE}
+```{r, echo=FALSE}
 print(paste0("El valor p asociado a esta prueba es: ", 
              round(valor_p,2)))
 ```
