@@ -31,7 +31,7 @@ options(scipen=999)
 
 ## 1. Pruebas de hipótesis
 
-**1.1** De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han terminado la preparatoria. Un investigador sospecha que este porcentaje es menor en un condado particular del estado. Obtiene una muestra aleatoria de dicho condado y encuentra que 69 de 310 personas en la muestra han completado la preparatoria. Estos resultados soportan su hipótesis? (describe tu elección de prueba de hipótesis, valor p y conclusión).
+**1.1** De acuerdo a una encuesta en EUA, 26% de los residentes adultos de Illinois han terminado la preparatoria. Un investigador sospecha que este porcentaje es menor en un condado particular del estado. Obtiene una muestra aleatoria de dicho condado y encuentra que 69 de 310 personas en la muestra han completado la preparatoria. Estos resultados soportan su hipótesis?
 
 **Respuesta:**
 
@@ -39,7 +39,7 @@ Podemos tomar 2 enfoques, a continuación explicamos el porqué
 
 -   **Prueba con estadístico Z**: dado que hablamos de proporciones sabemos cuál es el error estándar de una proporción, podremos calcular el estadístico Z, dada la naturaleza de la prueba también puede definirse como una prueba de Wald
 
--   **Enfoque bayesiano:** el 26% nos ayuda a definir una a priori y con los datos podemos generar una posterior. No es un cálculo de prueba de hipótesis tal cual pero podemos obtener intervalos de confianza que nos ayuden a determinar si realmente es significativamente menor.
+-   **Enfoque bayesiano:** el 26% nos ayuda a definir una a priori y con los datos podemos generar una posterior. No es un cálculo de prueba de hipótesis tal cual pero podemos obtener intervalos de credibilidad que nos ayuden a determinar si realmente es significativamente menor.
 
 Empezamos con la **prueba del estadístico Z**, nuestra prueba de hipótesis la podemos definir como (1 cola)
 
@@ -65,6 +65,9 @@ el cálculo se ve de la siguiente manera.
 numerador = (69/310)-0.26
 denominador = sqrt((0.26*0.74)/310)
 p_value <- pnorm(numerador/denominador)
+```
+
+```{r include=FALSE}
 print(paste0("El valor p asociado a esta prueba es: ", round(p_value,2)))
 ```
 
@@ -254,7 +257,7 @@ resume_wald <- resumen_wald %>%
 
 **Rechazo el 7% de las veces**. El ***Error del tipo I*** es la probabilidad de rechazar hipótesis nula de $H_{0}$ cuando es cierta, es decir que únicamente debemos calcular la distancia de aquellas simulaciones donde rechazamos
 
-```{r fig.cap = "Distancia entre el error del tipo I y 5%"}
+```{r fig.cap = "Distancia entre el error del tipo I y 5%", warning=FALSE}
 ggplot(resume_wald %>% filter(rechazo == 1),
        aes(x = point, xend = point, 
            y = 0, yend = distancia, 
