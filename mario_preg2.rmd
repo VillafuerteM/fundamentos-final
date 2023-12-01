@@ -1,0 +1,50 @@
+---
+title: "Final-2023" 
+author: 
+  - "Mariano Villafuerte -156057" 
+  - "Mario Medina - 156940"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+header-includes:
+  - \usepackage{placeins}
+  - \usepackage{rotating}
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: TRUE
+    toc_depth: 3
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.height = 4,
+	fig.width = 6,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE,
+	digits = 3,
+	width = 48
+)
+
+knitr::opts_chunk$set(echo = TRUE)
+knitr::knit_hooks$set(plot = function(x, options)  {
+  paste0(knitr::hook_plot_tex(x, options), "\n\\FloatBarrier\n")
+})
+```
+
+```{r librerias_lectura, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(data.table)
+library(patchwork)
+library(kableExtra)
+library(knitr)
+library(ggpubr)
+library(tidyr)
+library(fivethirtyeight)
+library(nullabor)
+wd <- "C:/Users/mario/OneDrive/Documentos/fundamentos-final"
+setwd(wd)
+set.seed(156057)
+options(scipen=999)
+```
