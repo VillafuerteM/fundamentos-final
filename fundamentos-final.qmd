@@ -164,13 +164,13 @@ ggplot(sims, aes(x = theta, fill = dist)) +
 
 Asímismo podemos obtener intervalos de credibilidad fácilmente debido a nuestra distribución "conocida"
 
-```{r warning = FALSE}
+```{r calc_intervalo, warning = FALSE}
 set.seed(156057)
 inferior <- round(qbeta(0.025, shape1 = 73, shape2 = 252),2)
 superior <- round(qbeta(0.975, shape1 = 73, shape2 = 252),2)
 ```
 
-```{r echo=FALSE}
+```{r imprime_intervalo, echo=FALSE}
 tibble(Inferior=inferior,
        Superior=superior) %>%
   kable(format='latex', 
@@ -215,7 +215,7 @@ $$
 \lambda = 2[l(\hat{p})-l(p_0)]
 $$
 
-```{r warning = FALSE}
+```{r log_verosim, warning = FALSE}
 set.seed(156057)
 experimentos <- 556
 observaciones <- c(315, 101, 108, 32)
@@ -248,7 +248,7 @@ sims_tbl <- sims_tbl %>%
                                   prob_nulas)))
 ```
 
-```{r, echo=FALSE, fig.cap = "Distribución Lambda"}
+```{r graph_sims_tbl, echo=FALSE, fig.cap = "Distribución Lambda"}
 ggplot(sims_tbl, aes(x = lambda)) + 
   geom_histogram(aes(x = lambda, 
                      y = ..density..), 
@@ -267,11 +267,11 @@ ggplot(sims_tbl, aes(x = lambda)) +
 
 Calculamos nuestro valor p.
 
-```{r warning = FALSE}
+```{r valor_p_alpha, warning = FALSE}
 valor_p <- mean(sims_tbl$lambda >= lambda_obs)
 ```
 
-```{r, echo=FALSE}
+```{r print_pv_alpha, echo=FALSE}
 print(paste0("El valor p asociado a esta prueba es: ", 
              round(valor_p,2)))
 ```
@@ -302,7 +302,7 @@ $$
 
 Ahora si asumimos que $\lambda_0=1$, $n=20$ y $\alpha = 0.05$. Podemos simular los datos de la siguiente manera. Un resultado importante es que como $\lambda$ es estimado con la media, el $\hat{ee}$ puede ser calculado como el error estándar de la media con $\frac{s}{\sqrt{n}}$
 
-```{r warning = FALSE}
+```{r wald, warning = FALSE}
 set.seed(156057)
 n <- 20
 lambda0 <- 1
@@ -324,15 +324,32 @@ resume_wald <- resumen_wald %>%
 
 **Rechazo el 7% de las veces**. El ***Error del tipo I*** es la probabilidad de rechazar hipótesis nula de $H_{0}$ cuando es cierta, es decir que únicamente debemos calcular la distancia de aquellas simulaciones donde rechazamos
 
-```{r fig.cap = "Distancia entre el error del tipo I y 5%", warning=FALSE}
+```{r tab_prop_wald, cho=FALSE}
+resume_wald %>% 
+  group_by(Rechazo=rechazo) %>% 
+  summarise(Conteo=n(), Proporción =Conteo/1000) %>%
+   kable(format='latex', 
+        booktabs=T,
+        caption = 'Proporción de rechazos de H0 con 1000 simulaciones') %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
+```
+
+```{r graph_rech_wald}
+#| fig.cap = "Distancia entre el error del tipo I y 5%", 
+#| warning=FALSE,
+#| echo=FALSE
+
 ggplot(resume_wald %>% filter(rechazo == 1),
-       aes(x = point, xend = point, 
-           y = 0, yend = distancia, 
-           color = factor(rechazo))) +
-  geom_segment(size = 1) +
+       aes(x = point, 
+           xend = point, 
+           y = 0, 
+           yend = distancia)) +
+  geom_segment(size = 1, 
+           color = 'red3') +
   labs(title = "Distancia al punto crítico",
        x = "Estimación",
-       y = "distancia a 0.05") +
+       y = "distancia a 0.05",
+       caption="*Se muestran solo los Rechazos de H0") +
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
@@ -378,11 +395,11 @@ En los puntos 2.1 y 2.2 buscamos hacer inferencia del parámetro $\sigma^2$.
 
 **2.1 Bootstrap paramétrico.**
 
-\* Escribe la función de log-verosimilitud y calcula el estimador de máxima verosimilitud para $\sigma^2$. Supongamos que observamos los datos \`x\` (en la carpeta datos), ¿Cuál es tu estimación de la varianza?
+-   Escribe la función de log-verosimilitud y calcula el estimador de máxima verosimilitud para $\sigma^2$. Supongamos que observamos los datos \`x\` (en la carpeta datos), ¿Cuál es tu estimación de la varianza?
 
-**R:** Sabemos que $\mu=0$, entonces nos quedamos con la parte de la distribución que considera el término de $\sigma^2$. Tenemos 150 datos obtenidos del archivo *x.RData*
+**Respuesta:** Sabemos que $\mu=0$, entonces nos quedamos con la parte de la distribución que considera el término de $\sigma^2$. Tenemos 150 datos obtenidos del archivo *x.RData*
 
-```{r warning = FALSE}
+```{r lectura_x, warning = FALSE, include=FALSE}
 #load(paste0("C:/Users/mario/OneDrive/Documentos/fundamentos-final/data/x.RData"))
 
 load("data/x.RData")
@@ -400,7 +417,7 @@ $$
 
 Se puede resolver asumiendo $x = \frac{1}{\sigma^2}$ y resolvemos por la "chicharronera"
 
-```{r warning = FALSE}
+```{r preg_2_1, warning = FALSE}
 set.seed(156057)
 # Coefficients
 a <- 9846.821
@@ -419,38 +436,64 @@ sigma_squared_2 <- 1 / x2
 
 Lo que nos da un valor $\sigma^2_{mv} = 131.291$ . **Podemos verlo graficamente y replicarlo con métodos de optimización numérica**
 
-```{r warning=FALSE}
+```{r optim_sol, warning=FALSE}
 set.seed(156057)
 log_p <- function(pars){
     (-150/2)*log(pars[1]) - (19693.64/2)*((1)/pars[1])
 }
+
 solucion <- optim(c(0.5), log_p, 
                   control = list(fnscale = -1, maxit = 10000), 
                   method = "Nelder-Mead")
+```
 
+```{r print_converg, echo=FALSE}
 print(paste0("Comprobamos convergencia: ",solucion$convergence))
+```
 
-est_mv <- tibble(parametro = c("varianza"), estimador = solucion$par) %>% 
+```{r table_estimador, echo=FALSE}
+est_mv <- tibble(parametro = c("Varianza"), 
+                 estimador = solucion$par) %>% 
   column_to_rownames(var = "parametro")
-est_mv
+```
+
+```{r print_estimador, echo=FALSE}
+est_mv %>% kable(format='latex', 
+        booktabs=T) %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
 Graficamos:
 
-```{r, warning = FALSE,fig.cap = "Optimización varianza"}
-dat_verosim <- tibble(x = seq(5,300, 0.01)) %>% mutate(log_prob = map_dbl(x, log_p))
-ggplot(dat_verosim, aes(x = x, y = log_prob)) + geom_line() +
-  geom_vline(xintercept = 131.65, color = "red") +
+```{r datos_graph}
+dat_verosim <- tibble(x = seq(5,300, 0.01)) %>% 
+  mutate(log_prob = map_dbl(x, log_p))
+```
+
+```{r graph_datos_verosim}
+#| warning = FALSE,
+#| echo=FALSE,
+#| fig.cap = "Optimización varianza" ,
+#| fig.height=3
+
+ggplot(dat_verosim, aes(x = x, y = log_prob)) + 
+  geom_line() +
+  geom_vline(xintercept = 131.65, 
+             color = "red", 
+             linetype='dashed') +
   labs(title = "Optimización") + 
-  xlab("Varianza (sigma^2)") + ylab("Log verosimilitud") + 
+  xlab("Varianza (sigma^2)") + 
+  ylab("Log verosimilitud") + 
   theme_pubclean(base_size = 12)
 ```
 
-\* Aproxima el error estándar de la estimación usando \_\_bootstrap paramétrico\_\_ y realiza un histograma de las replicaciones bootstrap.
+-   Aproxima el error estándar de la estimación usando *bootstrap paramétrico* y realiza un histograma de las replicaciones bootstrap.
 
-**R:** Creamos nuestro flujo de generador de muestra (utilizando el parámetro de máxima verosimilitud), cálculamos la log-verosimilitud y optimizamos
+**Respuesta:** Creamos nuestro flujo de generador de muestra (utilizando el parámetro de máxima verosimilitud), cálculamos la log-verosimilitud y optimizamos
 
-```{r warning = FALSE, fig.cap = "Histograma replicaciones bootstrap"}
+```{r bootstrap_param}
+#| warning = FALSE, 
+#| fig.cap = "Histograma replicaciones bootstrap"
 set.seed(156057)
 
 est_mle <- 131.65
@@ -458,66 +501,97 @@ n <- 150
 
 rep_boot <- function(rep, log_p, n, est_mle){
   muestra_bootstrap <- rnorm(n, 0, sqrt(est_mle))
+  
   log_p <- function(pars){
     (-n/2)*log(pars[1]) - (sum(muestra_bootstrap^2)/2)*((1)/pars[1])
   }
+  
   solucion <- optim(c(0.5), log_p, 
                   control = list(fnscale = -1, maxit = 10000), 
                   method = "Nelder-Mead")
   try(if(solucion$convergence != 0) stop("No se alcanzó convergencia."))
+  
   tibble(parametro = c("varianza"), estimador_boot = solucion$par) 
 }
 
-reps_boot <- map_dfr(1:15000, ~ rep_boot(.x, log_p, n = length(x), 
-                                         est_mle), rep = ".id") 
+reps_boot <- map_dfr(1:15000, 
+                     ~ rep_boot(.x, 
+                                log_p, 
+                                n = length(x),
+                                est_mle), 
+                     rep = ".id") 
+```
 
-ggplot(reps_boot, aes(x = estimador_boot)) +
-  geom_histogram(aes(x = estimador_boot, y = ..density..), bins = 30, 
-                 fill = "#F8766D",
+```{r graph_boot_param}
+#| echo=FALSE
+
+ggplot(reps_boot, 
+       aes(x = estimador_boot)) +
+  geom_histogram(aes(x = estimador_boot, 
+                     y = ..density..), 
+                 bins = 30, 
+                 fill = "cyan4",
                  alpha=0.5) + 
-  geom_vline(xintercept = est_mle, color = "red", linetype = "dashed") +
-  labs(title = "Replicaciones bootstrap", subtitle = "MLE: Varianza") + 
-  xlab("Varianza (Sigma^2)") + ylab("Densidad") + 
+  geom_vline(xintercept = est_mle, 
+             color = "red", 
+             linetype = "dashed") +
+  labs(title = "Replicaciones bootstrap", 
+       subtitle = "MLE: Varianza") + 
+  xlab("Varianza (Sigma^2)") + 
+  ylab("Densidad") + 
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
 Ahora podemos **calcular el error estándar de nuestra estimación**
 
-```{r warning = FALSE}
+```{r calc_err_est, warning = FALSE}
 set.seed(156057)
-error_est <- reps_boot %>% group_by(parametro) %>% 
+error_est <- reps_boot %>% 
+  group_by(parametro) %>% 
   summarise(ee_boot = sd(estimador_boot)) 
-error_est
+```
+
+```{r print_err_est, echo=FALSE}
+error_est %>% kable(format='latex', 
+        booktabs=T) %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
 Resumiendo. Nuestro $\sigma^2_{MLE} = 131.65$ y su $\hat{ee} = 15.34$
 
 **2.2 Análisis bayesiano**
 
-\* Continuamos con el problema de hacer inferencia de $\sigma^2$. Comienza especificando una inicial Gamma Inversa, justifica tu elección de los parámetros de la distribución inicial y grafica la función de densidad.
+-   Continuamos con el problema de hacer inferencia de $\sigma^2$. Comienza especificando una inicial Gamma Inversa, justifica tu elección de los parámetros de la distribución inicial y grafica la función de densidad.
 
-**R:** Empezamos definiendo una Gamma Inversa, **los parámetros al no tener mayor contexto del problema serán de un valor bajo mostrando que es una a priori con poca información. Asimismo buscando aprovechar las colas pesadas de la distribución ya que no tenemos certeza de la cantidad de varianza del problema** e.g $\alpha=0.05, \beta =2$
+**Respuesta:** Empezamos definiendo una Gamma Inversa, **los parámetros al no tener mayor contexto del problema serán de un valor bajo mostrando que es una a priori con poca información. Asimismo buscando aprovechar las colas pesadas de la distribución ya que no tenemos certeza de la cantidad de varianza del problema** e.g $\alpha=0.05, \beta =2$
 
 $$
 f(\sigma^2) :\frac{\beta^\alpha}{\Gamma({\alpha})}*\frac{1}{(\sigma^2)^{\alpha+1}}*e^{\frac{\beta}{\sigma^2}}
 $$
 
-```{r warning = FALSE,fig.cap = "Distribución de inversa gamma"}
+```{r dist_gamm_inv}
+#| warning = FALSE,
+#| fig.cap = "Distribución de inversa gamma"
+
 set.seed(156057)
-# Calculate the corresponding alpha and beta
-alpha <- 0.05  # Adjust based on your preference
+
+alpha <- 0.05
 beta <- 2
 
-# Generate a range of sigma^2 values
+# generamos distintos valores de sigma
 sigma2_values <- seq(0.01, 150, by = 0.01)
 
-# Calculate the probability densities using the Inverse Gamma density function
+# Calc densidad con inverse-gamma
 density_values <- actuar::dinvgamma(sigma2_values, shape = alpha, rate = beta)
 
-# Create a data frame for ggplot2
-df <- data.frame(sigma2 = sigma2_values, density = density_values)
+# data frame para graficar
+df_sigma <- data.frame(sigma2 = sigma2_values, density = density_values)
+```
 
-ggplot(df, aes(x = sigma2, y = density)) +
+```{r graph_gamma_inv}
+#| echo=FALSE
+
+ggplot(df_sigma, aes(x = sigma2, y = density)) +
   geom_line() +
   labs(title = "Función de densidad para la gamma inversa",
        subtitle = "InvGamma(0.05,2)",
@@ -526,9 +600,11 @@ ggplot(df, aes(x = sigma2, y = density)) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
-\* Calcula analíticamente la distribución posterior.
+{{< pagebreak >}}
 
-**R**: Sabemos que la posterior es el producto de los núcleos de la verosimilitud y de la apriori por lo que tenemos lo siguiente.
+-   Calcula analíticamente la distribución posterior.
+
+**Respuesta**: Sabemos que la posterior es el producto de los núcleos de la verosimilitud y de la apriori por lo que tenemos lo siguiente.
 
 -   Conocemos "n" y la suma de $x^2$
 
@@ -538,9 +614,9 @@ $$
 \begin{aligned}&& P(\sigma^2|x) &= P(x|\sigma^2)P(\sigma^2) \\&& P(\sigma^2|x) &\propto \left((\sigma^2)^{\frac{-n}{2}}e^{-\frac{\sum^n x_{i}^2}{2\sigma^2}}\right)\left((\sigma^2)^{-(\alpha+1)}e^{\frac{\beta}{\sigma^2}}\right) \\&& P(\sigma^2|x) &\propto (\sigma^2)^{-76.05}e^{\frac{9848.82}{\sigma^2}} \\&& P(\sigma^2|x) &\sim InvGamma(75.05,9848.82)\end{aligned}
 $$
 
-\* Realiza un histograma de simulaciones de la distribución posterior y calcula el error estándar de la distribución.
+-   Realiza un histograma de simulaciones de la distribución posterior y calcula el error estándar de la distribución.
 
-**R:**
+**Respuesta:**
 
 ```{r, warning = FALSE,fig.cap = "Comparativo Bayesiana vs. MLE"}
 set.seed(156057)
