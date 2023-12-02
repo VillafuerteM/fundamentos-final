@@ -5,6 +5,10 @@ author:
   - "Mario Medina - 156940" 
 editor: visual 
 output: pdf_document 
+css: |
+    body {
+        line-height: 1.5
+    }
 format:  
   pdf:     
     include-in-header:       
@@ -115,7 +119,7 @@ $$
 
 Obtenemos los siguientes histogramas.
 
-```{r posterior, warning = FALSE}
+```{r posterior}
 set.seed(156057)
 sim_inicial <- sim_inicial %>% mutate(dist = "inicial")
 sim_posterior <- tibble(theta = rbeta(10000, 73, 252)) %>% 
@@ -126,7 +130,8 @@ sims <- bind_rows(sim_inicial, sim_posterior)
 
 ```{r graph_post_ini, warning = FALSE}
 #| echo=FALSE,
-#| fig.cap="Inicial vs. Posterior"
+#| fig.cap="Inicial vs. Posterior",
+#| fig.height=4
 
 ggplot(sims, aes(x = theta, fill = dist)) +
   geom_histogram(aes(x = theta), 
@@ -147,6 +152,8 @@ ggplot(sims, aes(x = theta, fill = dist)) +
   theme_pubclean(base_size = 12)
 ```
 
+{{< pagebreak >}}
+
 **Un estimador puntual** es la media de la distribuciones, que al ser una Beta se obtiene como $\frac{a}{a+b}$
 
 -   Dist. Inicial: $\frac{4}{4+11} = 0.267$
@@ -159,12 +166,22 @@ Asímismo podemos obtener intervalos de credibilidad fácilmente debido a nuestr
 
 ```{r warning = FALSE}
 set.seed(156057)
-paste0("Intervalo dist. posterior: (",
-       round(qbeta(0.025, shape1 = 73, shape2 = 252),2),",",
-       round(qbeta(0.975, shape1 = 73, shape2 = 252),2),")")
+inferior <- round(qbeta(0.025, shape1 = 73, shape2 = 252),2)
+superior <- round(qbeta(0.975, shape1 = 73, shape2 = 252),2)
+```
+
+```{r echo=FALSE}
+tibble(Inferior=inferior,
+       Superior=superior) %>%
+  kable(format='latex', 
+        booktabs=T,
+        caption = 'Intervalo dist. posterior') %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
 Dado la información anterior el **intervalo de confianza al 95% de la posterior sí incluye el valor del 26%. Por lo que todavía no es del todo "aceptable"** que la proporción del condado sea significativamente menor al del estado de Illinois La conclusión de este enfoque es el mismo que en el primero.
+
+{{< pagebreak >}}
 
 **1.2** Mendel criaba chícharos de semillas lisas amarillas y de semillas corrugadas verdes. Éstas daban lugar a 4 tipos de descendientes: amarrillas lisas, amarillas corrugadas, verdes lisas y verdes corrugadas. El número de cada una es multinomial con parámetro $p=(p_1, p_2, p_3, p_4)$ . De acuerdo a su teoría de herencia este vector de probabilidades es:
 
@@ -207,7 +224,6 @@ simul_nula <- rmultinom(15000, experimentos, prob_nulas)
 
 lambda <- function(n, x, p = prob_nulas){
   # Estimadores MV
-  #print(paste(x[1],",",x[2],",",x[3],",",x[4]))
   p1_mv <- x[1]/n
   p2_mv <- x[2]/n
   p3_mv <- x[3]/n
@@ -219,15 +235,17 @@ lambda <- function(n, x, p = prob_nulas){
   lambda <- 2*(log_p_mv - log_p_nula)
   lambda
 }
+
 lambda_obs <- lambda(experimentos, observaciones, prob_nulas)
-# Create a new data frame
+
+
 new_df <- data.frame(simul_nula)
 sims_tbl <- data.frame(sim_x = I(as.list(new_df))) 
-sims_tbl <- dplyr::mutate(sims_tbl,
-                          lambda = map_dbl(sim_x, 
-                                           ~lambda(experimentos,
-                                                   .x,
-                                                   prob_nulas)))
+sims_tbl <- sims_tbl %>% 
+  mutate(lambda = map_dbl(sim_x,
+                          ~lambda(experimentos,
+                                  .x,
+                                  prob_nulas)))
 ```
 
 ```{r, echo=FALSE, fig.cap = "Distribución Lambda"}
@@ -253,16 +271,14 @@ Calculamos nuestro valor p.
 valor_p <- mean(sims_tbl$lambda >= lambda_obs)
 ```
 
-<<<<<<< HEAD
 ```{r, echo=FALSE}
-=======
-```{r warning = FALSE}
->>>>>>> f27ee7292a2928b3a5a154dcb624c2ac54ac3b41
 print(paste0("El valor p asociado a esta prueba es: ", 
              round(valor_p,2)))
 ```
 
 Por lo que **no encontramos evidencia encontra de la hipótesis nula**. Hace sentido ya que desde la Lambda observada el valor es cercano a 0, por lo que la nula tiene bastante verosimilitud respecto a lo que los datos indican.
+
+{{< pagebreak >}}
 
 **1.3**. Sean $X_1, …X_n \sim Poisson(\lambda)$,
 
@@ -320,6 +336,8 @@ ggplot(resume_wald %>% filter(rechazo == 1),
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
+{{< pagebreak >}}
+
 ## 2. Relación entre bootstrap e inferencia bayesiana
 
 Consideremos el caso en que tenemos una única observación $x$ proveniente de una distribución normal
@@ -348,13 +366,15 @@ $$
 
 Esta posterior coincide con la distribución de bootstrap paramétrico en que generamos valores $x^*$ de $N(x,1)$, donde $x$ es el estimador de máxima verosimilitud. Lo anterior se cumple debido a que utilizamos un ejemplo Normal pero también se cumple proximadamente en otros casos, lo que conlleva a una correspondencia entre el bootstrap paramétrico y la inferencia bayesiana. En este caso, la distribución bootstrap representa (aproximadamente) una distribución posterior no-informartiva del parámetro de interés. Mediante la perturbación en los datos el bootstrap aproxima el efecto bayesiano de perturbar los parámetros con la ventaja de ser más simple de implementar (en muchos casos).
 
-\*Los detalles se pueden leer en \_The Elements of Statistical Learning\_ de Hastie y Tibshirani.
+-   Los detalles se pueden leer en \_The Elements of Statistical Learning\_ de Hastie y Tibshirani.
 
 Comparemos los métodos en otro problema con el fin de apreciar la similitud en los procedimientos:
 
 Supongamos $x_1,…,x_n \sim N(0, \sigma^2)$, es decir, los datos provienen de una distribución con media cero y varianza desconocida.
 
 En los puntos 2.1 y 2.2 buscamos hacer inferencia del parámetro $\sigma^2$.
+
+{{< pagebreak >}}
 
 **2.1 Bootstrap paramétrico.**
 
@@ -363,7 +383,9 @@ En los puntos 2.1 y 2.2 buscamos hacer inferencia del parámetro $\sigma^2$.
 **R:** Sabemos que $\mu=0$, entonces nos quedamos con la parte de la distribución que considera el término de $\sigma^2$. Tenemos 150 datos obtenidos del archivo *x.RData*
 
 ```{r warning = FALSE}
-load(paste0("C:/Users/mario/OneDrive/Documentos/fundamentos-final/data/x.RData"))
+#load(paste0("C:/Users/mario/OneDrive/Documentos/fundamentos-final/data/x.RData"))
+
+load("data/x.RData")
 ```
 
 $$
