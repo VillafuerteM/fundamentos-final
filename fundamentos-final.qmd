@@ -618,35 +618,66 @@ $$
 
 **Respuesta:**
 
-```{r, warning = FALSE,fig.cap = "Comparativo Bayesiana vs. MLE"}
+```{r graph_a_b}
+#| warning = FALSE,
+#| fig.cap = "Comparativo Bayesiana vs. MLE"
+
 set.seed(156057)
 alpha_post <- 75.05
 beta_post <- 9848.82
 
-post_samples <- 1 / rgamma(15000, shape = alpha_post, rate = beta_post)
+post_samples <- 1 / rgamma(15000, 
+                           shape = alpha_post, 
+                           rate = beta_post)
+
 df_posterior <- data.frame(post_samples)
+```
+
+```{r}
+#| echo=FALSE,
+#| warning=FALSE
 a <- ggplot(df_posterior, aes(x = post_samples)) +
-  geom_histogram(aes(x = post_samples, y = ..density..), bins = 30, 
+  geom_histogram(aes(x = post_samples, 
+                     y = ..density..), 
+                 bins = 30, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = (9848.82/74.05), color = "red", linetype = "dashed") +
-  annotate("text", x = (9848.82/74.05), y = Inf, label = "E[sigma^2]: 133.00", 
-           vjust = 1, hjust = 0.5, colour = "red")+
+  geom_vline(xintercept = (9848.82/74.05), 
+             color = "red", 
+             linetype = "dashed") +
+  annotate("text", x = (9848.82/74.05), 
+           y = Inf, 
+           label = "E[sigma^2]: 133.00", 
+           vjust = 1, 
+           hjust = 0.5, 
+           colour = "red3")+
   labs(title = "Simulaciones de posterior", 
        subtitle = "InvGamma(75.05,9848.82)") + 
-  xlab("Varianza (Sigma^2)") + ylab("Densidad") + 
+  xlab("Varianza (Sigma^2)") + 
+  ylab("Densidad") + 
   xlim(80,250)+
   ggpubr::theme_pubclean(base_size = 8)
 
 b <- ggplot(reps_boot, aes(x = estimador_boot)) +
-  geom_histogram(aes(x = estimador_boot, y = ..density..), bins = 30, 
+  geom_histogram(aes(x = estimador_boot, 
+                     y = ..density..), 
+                 bins = 30, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = est_mle, color = "red", linetype = "dashed") +
-  annotate("text", x = est_mle, y = Inf, label = "MLE: 131.65", 
-           vjust = 1, hjust = 0.5,colour = "red")+
-  labs(title = "Replicaciones bootstrap", subtitle = "MLE: Varianza") + 
-  xlab("Varianza (Sigma^2)") + ylab("Densidad") + 
+  geom_vline(xintercept = est_mle, 
+             color = "red", 
+             linetype = "dashed") +
+  annotate("text", 
+           x = est_mle, 
+           y = Inf, 
+           label = "MLE: 131.65", 
+           vjust = 1, 
+           hjust = 0.5,
+           colour = "red3")+
+  labs(title = "Replicaciones bootstrap", 
+       subtitle = "MLE: Varianza") + 
+  xlab("Varianza (Sigma^2)") + 
+  ylab("Densidad") + 
   xlim(80,250)+
   ggpubr::theme_pubclean(base_size = 8)
 
@@ -655,13 +686,23 @@ a+b
 
 Calculamos el error estándar
 
-```{r warning = FALSE}
+```{r ee_bayes, warning = FALSE}
 set.seed(156057)
 error_est_bayes <- df_posterior %>% 
   dplyr::mutate(parametro = "varianza") %>%
   dplyr::group_by(parametro) %>% 
   summarise(ee_bayes = sd(post_samples)) 
-error_est_bayes %>% left_join(error_est)
+```
+
+```{r print_ee_bayes}
+#| echo=FALSE,
+#| message=FALSE
+
+error_est_bayes %>% 
+  left_join(error_est) %>% 
+  kable(format='latex', 
+        booktabs=T) %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
 \* ¿Cómo se comparan tus resultados con los de bootstrap paramétrico?
