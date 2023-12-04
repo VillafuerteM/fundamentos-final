@@ -875,7 +875,7 @@ tibble(Inferior=round(log(sqrt(1/qgamma(0.975, alpha_post, beta_post))),3),
 
 Los datos *pew_research_center_june_elect_wknd_data.dta* tienen información de encuestas realizadas durante la campaña presidencial 2008 de EUA.
 
-```{r, warning=FALSE}
+```{r, echo=FALSE}
 set.seed(156057)
 data <- foreign::read.dta("data/pew_research_center_june_elect_wknd_data.dta")
 ```
@@ -892,7 +892,7 @@ A falta de más información se decidió tomar la columna *weight* como factor d
 
 -   Grafica en el eje *x* el número de encuestas para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas?
 
-**R:** Excluimos los estados mencionados y utilizamos la variable *weight* como factor de expansión para realizar los calculos del porcentaje de *very liberal*. Además cada registro lo tomamos en cuenta como si fuera 1 encuesta, entonces entendemos por número de encuestas como número de registros agrupados por la variable *state*. El estimador de **máxima verosimilitud** para una proporción, *very liberal* como se ha demostrado varias veces en clase y en la pregunta 2 será $\frac{x_{very.liberal}}{n}$
+**Respuesta:** Excluimos los estados mencionados y utilizamos la variable *weight* como factor de expansión para realizar los calculos del porcentaje de *very liberal*. Además cada registro lo tomamos en cuenta como si fuera 1 encuesta, entonces entendemos por número de encuestas como número de registros agrupados por la variable *state*. El estimador de **máxima verosimilitud** para una proporción, *very liberal* como se ha demostrado varias veces en clase y en la pregunta 2 será $\frac{x_{very.liberal}}{n}$
 
 ```{r, warning=FALSE}
 set.seed(156057)
@@ -904,7 +904,9 @@ very_liberal <-
   dplyr::group_by(state, ideo) %>% 
   dplyr::summarise(poblacion = sum(weight),
                    poblacion_fix = n()) %>%
-  tidyr::pivot_wider(id_cols = state, names_from = ideo, values_from = poblacion) %>%
+  tidyr::pivot_wider(id_cols = state, 
+                     names_from = ideo, 
+                     values_from = poblacion) %>%
   ungroup()
 
 # Población total = suma de weight; # de encuestas = conteo de renglones
@@ -916,7 +918,9 @@ poblacion_encuestas <-
   dplyr::summarise(poblacion = sum(weight),
                    encuestas = n()) %>% ungroup()
 
-tabla_aux <- dplyr::left_join(very_liberal, poblacion_encuestas, by = "state")
+tabla_aux <- dplyr::left_join(very_liberal, 
+                              poblacion_encuestas, 
+                              by = "state")
 
 tabla_aux <- tabla_aux %>%
   dplyr::mutate(perc_very_liberal = round((`very liberal`/poblacion)*100,2))
@@ -949,7 +953,7 @@ ggplot(tabla_aux, aes(x = encuestas, y = perc_very_liberal)) +
 
 -   Grafica en el eje *x* el porcentaje de votos que obtuvo Obama en la elección para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas? (usa los datos *2008ElectionResult.csv*)
 
-**R:** Realizamos la unión de basos de datos
+**Respuesta:** Realizamos la unión de basos de datos
 
 ```{r, warning=FALSE}
 set.seed(156057)
@@ -989,7 +993,7 @@ ggplot(tabla_aux, aes(x = vote_Obama_pct, y = perc_very_liberal)) +
 
 -   Estima el mismo porcentaje (*very liberal*) usando inferencia bayesiana, en particular la familia conjugada beta-binomial. Deberás estimar la proporción de manera independiente para cada estado, sin embargo, utilizarás la misma inicial a lo largo de todos: $Beta(8,160)$.
 
-**R:** Al tener un modelo beta-binomial sabemos que la **posterior tendrá una distribución Beta**. Previo a establecer una función general para la posterior realizamos simulaciones de la inicial para ver que información previa tenemos.
+**Respuesta:** Al tener un modelo beta-binomial sabemos que la **posterior tendrá una distribución Beta**. Previo a establecer una función general para la posterior realizamos simulaciones de la inicial para ver que información previa tenemos.
 
 $$
 p(\theta) \propto \theta^{8-1} (1-\theta)^{160-1}
@@ -1051,7 +1055,7 @@ kable(tabla_aux %>%
 
 -   Para dos de los estados: Idaho y Virginia, adicional a calcular la posterior usando las propiedades de la familia conjugada, utiliza Stan para hacer la inferencia, revisa los diagnósticos de convergencia y describe tus observaciones ($\hat{R}$ y $ESS$).
 
-**R:** Realizamos estimaciones vía *Stan*. Dado que es la misma inicial un mismo modelo nos funciona para ambos Estados.
+**Respuesta:** Realizamos estimaciones vía *Stan*. Dado que es la misma inicial un mismo modelo nos funciona para ambos Estados.
 
 ```{r, warning=FALSE}
 set.seed(156057)
@@ -1119,7 +1123,7 @@ kable(stan_resumen,
 
 -   Utiliza la media posterior de cada estado como estimador puntual y repite las gráficas del inciso anterior.
 
-**R:** Realizamos las mismas gráficas; sin embargo, ahora utilizamos la media posterior como estimadores puntuales.
+**Respuesta:** Realizamos las mismas gráficas; sin embargo, ahora utilizamos la media posterior como estimadores puntuales.
 
 **La relación encontrada se mantiene respecto a la relación entre número de encuestas y el porcentaje estimado de la población con ideología** *very liberal*
 
