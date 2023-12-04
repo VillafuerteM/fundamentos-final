@@ -563,6 +563,8 @@ error_est %>% kable(format='latex',
 
 Resumiendo. Nuestro $\sigma^2_{MLE} = 131.65$ y su $\hat{ee} = 15.34$
 
+{{< pagebreak >}}
+
 **2.2 Análisis bayesiano**
 
 -   Continuamos con el problema de hacer inferencia de $\sigma^2$. Comienza especificando una inicial Gamma Inversa, justifica tu elección de los parámetros de la distribución inicial y grafica la función de densidad.
@@ -617,6 +619,8 @@ ggplot(df_sigma, aes(x = sigma2, y = density)) +
 $$
 \begin{aligned}&& P(\sigma^2|x) &= P(x|\sigma^2)P(\sigma^2) \\&& P(\sigma^2|x) &\propto \left((\sigma^2)^{\frac{-n}{2}}e^{-\frac{\sum^n x_{i}^2}{2\sigma^2}}\right)\left((\sigma^2)^{-(\alpha+1)}e^{\frac{\beta}{\sigma^2}}\right) \\&& P(\sigma^2|x) &\propto (\sigma^2)^{-76.05}e^{\frac{9848.82}{\sigma^2}} \\&& P(\sigma^2|x) &\sim InvGamma(75.05,9848.82)\end{aligned}
 $$
+
+{{< pagebreak >}}
 
 -   Realiza un histograma de simulaciones de la distribución posterior y calcula el error estándar de la distribución.
 
@@ -690,7 +694,7 @@ a+b
 
 Calculamos el error estándar
 
-```{r ee_bayes, warning = FALSE}
+```{r ee_bayes, warning = FALSE, echo=FALSE}
 set.seed(156057)
 error_est_bayes <- df_posterior %>% 
   dplyr::mutate(parametro = "varianza") %>%
@@ -709,27 +713,39 @@ error_est_bayes %>%
   kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
+{{< pagebreak >}}
+
 -   ¿Cómo se comparan tus resultados con los de bootstrap paramétrico?
 
-**R:** En la gráfica de arriba como en la tabla viene el comparativo de los estimadores. Ponemos de nuevo el resumen
+**Respuesta:** En la gráfica de arriba como en la tabla viene el comparativo de los estimadores. Ponemos de nuevo el resumen
 
--   *Bayesiana*: Calculamos el valor esperado: $E[\sigma^2] = \frac{\beta}{\alpha-1}=133.00$
+-   *Bayesiana*:
 
--   *Bootstrap paramétrico*: Calculamos el estimador por medio de máxima verosimilitud (i.e derivando igualando a 0) $\sigma^2_{MV} = 131.65$
+    Calculamos el valor esperado: $E[\sigma^2] = \frac{\beta}{\alpha-1}=133.00$
+
+-   *Bootstrap paramétrico*:
+
+    Calculamos el estimador por medio de máxima verosimilitud (i.e derivando igualando a 0) $\sigma^2_{MV} = 131.65$
 
 Y los errores estándar obtenido por medio de simulaciones.
 
--   *Bayesiana*: Distribución posterior $InvGamma(75.05,9848.82)$ : $\hat{ee}=15.459$
+-   *Bayesiana*:
 
--   *Bootstrap paramétrico*: Distribución $Normal(0,\sigma^2_{MV})$ : $\hat{ee}=15.34$
+    Distribución posterior $InvGamma(75.05,9848.82)$ : $\hat{ee}=15.459$
 
-Corroboramos la correspondencia
+-   *Bootstrap paramétrico*:
+
+    Distribución $Normal(0,\sigma^2_{MV})$ : $\hat{ee}=15.34$
+
+$\Longrightarrow$ Corroboramos la correspondencia
+
+{{< pagebreak >}}
 
 **2.3** Supongamos que ahora buscamos hacer **inferencia del parámetro** $\tau=log(\sigma)$, ¿cuál es el estimador de máxima verosimilitud?
 
 -   Utiliza bootstrap paramétrico para generar un intervalo de confianza del 95% para el parámetro $\tau$ y realiza un histograma de las replicaciones bootstrap.
 
-**R:** Podemos argumentar al tratarse de una transformación logaritmica bien definida (sobre valores estricatamente positivos) que por la propiedad de **Equivarianza de MLE** que...
+**Respuesta:** Podemos argumentar al tratarse de una transformación logarítmica bien definida (sobre valores estricatamente positivos) que por la propiedad de **Equivarianza de MLE** que...
 
 $$
 \hat{\tau} = g(\hat{\sigma^2}) = log(\sqrt{131.65}) = 2.44
@@ -737,71 +753,123 @@ $$
 
 será el **MLE** de $\tau$
 
-```{r warning = FALSE, fig.cap = "Histograma bootstrap: Tau"}
+```{r boot_tau_2_3}
+#| warning = FALSE
 reps_boot <- 
   reps_boot %>% dplyr::mutate(tau_boot = log(sqrt(estimador_boot)))
+```
+
+```{r graph_2_3_tau_boot}
+#| warning = FALSE, 
+#| fig.cap = "Histograma bootstrap: Tau",
+#| echo=FALSE
+
 ggplot(reps_boot, aes(x = tau_boot)) +
-  geom_histogram(aes(x = tau_boot, y = ..density..), bins = 30, 
+  geom_histogram(aes(x = tau_boot, 
+                     y = ..density..), 
+                 bins = 30, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = 2.44, color = "red", linetype = "dashed") +
-  labs(title = "Replicaciones bootstrap", subtitle = "MLE: Tau") + 
-  xlab("Tau") + ylab("Densidad") + 
+  geom_vline(xintercept = 2.44, 
+             color = "red", 
+             linetype = "dashed") +
+  labs(title = "Replicaciones bootstrap", 
+       subtitle = "MLE: Tau") + 
+  xlab("Tau") + 
+  ylab("Densidad") + 
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
 Podemos utilizar **intervalos de cuantiles para reportar un intervalo al 95%**
 
-```{r warning = FALSE}
+```{r calc_intervalo_2.3, warning = FALSE}
 quantil_95_izq <- quantile(reps_boot$tau_boot,.025)
 quantil_95_der <- quantile(reps_boot$tau_boot,.975)
-print(paste0("Intervalo de confianza al 95% es : (",
-             round(quantil_95_izq,3), ", ",round(quantil_95_der,3),")"))
+```
+
+{{< pagebreak >}}
+
+```{r print_table_2_3, echo=FALSE}
+tibble(Inferior=quantil_95_izq, Superior=quantil_95_der) %>% 
+  kable(digits=3, 
+        booktabs=T) %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
 -   Ahora volvamos a inferencia bayesiana, calcula un intervalo de confianza para $\tau$ y un histograma de la distribución posterior de $\tau$.
 
-**R:** Dado que en Baysesiana trabajamos una vez con los datos dados es más fácil agarrar la info y hacer la transformación.
+**Respuesta:** Dado que en Baysesiana trabajamos una vez con los datos dados es más fácil agarrar la info y hacer la transformación.
 
-```{r, warning = FALSE, fig.cap="Comparativo Bayesiano vs. Bootstrap (Tau)"}
+```{r, warning = FALSE}
 df_posterior <- 
-  df_posterior %>% dplyr::mutate(tau_bayes = log(sqrt(post_samples))) 
+  df_posterior %>% dplyr::mutate(tau_bayes = log(sqrt(post_samples)))
+```
+
+```{r graph_A_B_2_3}
+#| echo=FALSE,
+#| warning=FALSE,
+#| fig.cap="Comparativo Bayesiano vs. Bootstrap (Tau)"
 
 a <- ggplot(df_posterior, aes(x = tau_bayes)) +
-  geom_histogram(aes(x = tau_bayes, y = ..density..), bins = 30, 
+  geom_histogram(aes(x = tau_bayes, 
+                     y = ..density..), 
+                 bins = 30, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = log(sqrt((9848.82/74.05))), color = "red", linetype = "dashed") +
-  annotate("text", x = log(sqrt((9848.82/74.05))), y = Inf, label = "2.4452", 
-           vjust = 1, hjust = 0.5, colour = "red")+
+  geom_vline(xintercept = log(sqrt((9848.82/74.05))), 
+             color = "red", 
+             linetype = "dashed") +
+  annotate("text", 
+           x = log(sqrt((9848.82/74.05))), 
+           y = Inf, 
+           label = "2.4452", 
+           vjust = 1, 
+           hjust = 0.5, 
+           colour = "red")+
   labs(title = "Simulaciones de posterior", 
        subtitle = "InvGamma(75.05,9848.82)") + 
-  xlab("Tau") + ylab("Densidad") + 
+  xlab("Tau") + 
+  ylab("Densidad") + 
   xlim(0,4)+
   ggpubr::theme_pubclean(base_size = 8)
 
 b <- ggplot(reps_boot, aes(x = tau_boot)) +
-  geom_histogram(aes(x = tau_boot, y = ..density..), bins = 30, 
+  geom_histogram(aes(x = tau_boot, 
+                     y = ..density..), 
+                 bins = 30, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = 2.44, color = "red", linetype = "dashed") +
-  annotate("text", x = 2.44, y = Inf, label = "2.4387", 
-           vjust = 1, hjust = 0.5,colour = "red")+
-  labs(title = "Replicaciones bootstrap", subtitle = "MLE: Tau") + 
-  xlab("Tau") + ylab("Densidad") + 
+  geom_vline(xintercept = 2.44, 
+             color = "red", 
+             linetype = "dashed") +
+  annotate("text", 
+           x = 2.44, 
+           y = Inf, 
+           label = "2.4387", 
+           vjust = 1, 
+           hjust = 0.5,
+           colour = "red")+
+  labs(title = "Replicaciones bootstrap", 
+       subtitle = "MLE: Tau") + 
+  xlab("Tau") + 
+  ylab("Densidad") + 
   xlim(0,4)+
   ggpubr::theme_pubclean(base_size = 8)
 
 a+b
 ```
 
-El intervalo de credibilidad para $\tau$ es:
+El intervalo de credibilidad (al 95%) para $\tau$ es:
 
-```{r warning = FALSE}
-paste0("Intervalo dist. posterior: (",
-       round(log(sqrt(1/qgamma(0.975, alpha_post, beta_post))),3),",",
-       round(log(sqrt(1/qgamma(0.025, alpha_post, beta_post))),3),")")
+```{r warning = FALSE, echo=FALSE}
+tibble(Inferior=round(log(sqrt(1/qgamma(0.975, alpha_post, beta_post))),3),
+       Superior=round(log(sqrt(1/qgamma(0.025, alpha_post, beta_post))),3)) %>% 
+  kable(booktabs=T) %>%
+  kableExtra::kable_styling(latex_options = c('hold_position'))
+       
 ```
+
+{{< pagebreak >}}
 
 ## 3. Bayesiana y regularización
 
