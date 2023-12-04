@@ -26,7 +26,11 @@ library(tidyr)
 library(fivethirtyeight)
 library(nullabor)
 library(actuar)
-
+library(foreign)
+library(ggrepel)
+library(cmdstanr)
+library(posterior)
+library(tidyverse)
 # wd <- "C:/Users/mario/OneDrive/Documentos/fundamentos-final"
 # setwd(wd)
 
@@ -705,7 +709,7 @@ error_est_bayes %>%
   kableExtra::kable_styling(latex_options = c('hold_position'))
 ```
 
-\* ¿Cómo se comparan tus resultados con los de bootstrap paramétrico?
+-   ¿Cómo se comparan tus resultados con los de bootstrap paramétrico?
 
 **R:** En la gráfica de arriba como en la tabla viene el comparativo de los estimadores. Ponemos de nuevo el resumen
 
@@ -723,7 +727,7 @@ Corroboramos la correspondencia
 
 **2.3** Supongamos que ahora buscamos hacer **inferencia del parámetro** $\tau=log(\sigma)$, ¿cuál es el estimador de máxima verosimilitud?
 
-\* Utiliza bootstrap paramétrico para generar un intervalo de confianza del 95% para el parámetro $\tau$ y realiza un histograma de las replicaciones bootstrap.
+-   Utiliza bootstrap paramétrico para generar un intervalo de confianza del 95% para el parámetro $\tau$ y realiza un histograma de las replicaciones bootstrap.
 
 **R:** Podemos argumentar al tratarse de una transformación logaritmica bien definida (sobre valores estricatamente positivos) que por la propiedad de **Equivarianza de MLE** que...
 
@@ -755,7 +759,7 @@ print(paste0("Intervalo de confianza al 95% es : (",
              round(quantil_95_izq,3), ", ",round(quantil_95_der,3),")"))
 ```
 
-\* Ahora volvamos a inferencia bayesiana, calcula un intervalo de confianza para $\tau$ y un histograma de la distribución posterior de $\tau$.
+-   Ahora volvamos a inferencia bayesiana, calcula un intervalo de confianza para $\tau$ y un histograma de la distribución posterior de $\tau$.
 
 **R:** Dado que en Baysesiana trabajamos una vez con los datos dados es más fácil agarrar la info y hacer la transformación.
 
@@ -801,47 +805,311 @@ paste0("Intervalo dist. posterior: (",
 
 ## 3. Bayesiana y regularización
 
-Los datos \*pew_research_center_june_elect_wknd_data.dta\* tienen información de encuestas realizadas durante la campaña presidencial 2008 de EUA.
+Los datos *pew_research_center_june_elect_wknd_data.dta* tienen información de encuestas realizadas durante la campaña presidencial 2008 de EUA.
 
-```{r}
-#poll_data <- foreign::read.dta("data/pew_research_center_june_elect_wknd_data.dta")
+```{r, warning=FALSE}
+set.seed(156057)
+data <- foreign::read.dta("data/pew_research_center_june_elect_wknd_data.dta")
 ```
 
-\* Estima el porcentaje de la población de cada estado (excluyendo Alaska, Hawai, y DC) que se considera \*very liberal\*, utilizando el estimador de máxima verosimilitud.
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
 
--   Grafica en el eje \*x\* el número de encuestas para cada estado y en el eje \*y\* la estimación de máxima verosimilitud para \*very liberal\*. ¿Qué observas?
--   Grafica en el eje \*x\* el porcentaje de votos que obtuvo Obama en la elección para cada estado y en el eje \*y\* la estimación de máxima verosimilitud para \*very liberal\*. ¿Qué observas? (usa los datos \*2008ElectionResult.csv\*)
+**NOTA**: para cada respuesta se presenta solo un ejemplo del data.frame, al final como anexo se agrega la tabla para los 48 estados considerados.
 
-\* Estima el mismo porcentaje (\*very liberal\*) usando inferencia bayesiana, en particular la familia conjugada beta-binomial. Deberás estimar la proporción de manera independiente para cada estado, sin embargo, utilizarás la misma inicial a lo largo de todos: $Beta(8,160)$.
+A falta de más información se decidió tomar la columna *weight* como factor de expanción para las encuestas por lo que el total de población por estado será la suma de esta columna. Para el total de encuestas se considero que cada registro (renglón) era una, por lo que el total de encuestas es el conteo de registros por estado.
 
--   Simula de la distribución incial y describe.
+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\--
+
+-   Estima el porcentaje de la población de cada estado (excluyendo Alaska, Hawai, y DC) que se considera *very liberal*, utilizando el estimador de máxima verosimilitud.
+
+-   Grafica en el eje *x* el número de encuestas para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas?
+
+**R:** Excluimos los estados mencionados y utilizamos la variable *weight* como factor de expansión para realizar los calculos del porcentaje de *very liberal*. Además cada registro lo tomamos en cuenta como si fuera 1 encuesta, entonces entendemos por número de encuestas como número de registros agrupados por la variable *state*. El estimador de **máxima verosimilitud** para una proporción, *very liberal* como se ha demostrado varias veces en clase y en la pregunta 2 será $\frac{x_{very.liberal}}{n}$
+
+```{r, warning=FALSE}
+set.seed(156057)
+# Consideramos que la población total de mi estado es la suma de "weight" 
+very_liberal <- 
+  data %>% 
+  # Sin alaska, hawaii, washington dc
+  dplyr::filter(!(state %in% c("washington dc","hawaii","alaska"))) %>%
+  dplyr::group_by(state, ideo) %>% 
+  dplyr::summarise(poblacion = sum(weight),
+                   poblacion_fix = n()) %>%
+  tidyr::pivot_wider(id_cols = state, names_from = ideo, values_from = poblacion) %>%
+  ungroup()
+
+# Población total = suma de weight; # de encuestas = conteo de renglones
+poblacion_encuestas <- 
+  data %>% 
+  # Sin alaska, hawaii, washington dc
+  dplyr::filter(!(state %in% c("washington dc","hawaii","alaska"))) %>%
+  dplyr::group_by(state) %>% 
+  dplyr::summarise(poblacion = sum(weight),
+                   encuestas = n()) %>% ungroup()
+
+tabla_aux <- dplyr::left_join(very_liberal, poblacion_encuestas, by = "state")
+
+tabla_aux <- tabla_aux %>%
+  dplyr::mutate(perc_very_liberal = round((`very liberal`/poblacion)*100,2))
+
+kable(tabla_aux %>% 
+      dplyr::select(state, perc_very_liberal, encuestas) %>% head(),
+      caption = "Head por estado con MLE",
+      digits = 4,
+      format = "latex",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("striped"),
+                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F, fixed_thead = T)
+```
+
+Graficamos... Observamos una **ligera relación positiva: a mayor número de encuestas mayor el porcentaje de población que se identifican con la ideología de very liberal**. Esto es de llamar la atención, no deberían de depender nuestros resultados del número de encuestas podría haber problemas con el muestro. Sin embargo, al estar hablando de porcentajes "relativamente bajos" el encuestar podría llegarse a ver esta relación.
+
+```{r, warning=FALSE, fig.cap= "Pct Very Liberal vs. Num. Encuestas (archivo DTA)"}
+set.seed(156057)
+ggplot(tabla_aux, aes(x = encuestas, y = perc_very_liberal)) + 
+  geom_point() +
+  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
+  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
+  geom_smooth(method = "lm", se = FALSE, color = "#F8766D", linetype = "dashed") +
+  labs(title = "Num. Encuestas vs. Pct Very Liberal") + 
+  xlab("Num Encuestas") + ylab("Pct Very Liberal (MLE)") + 
+  ylim(0,12) +
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+-   Grafica en el eje *x* el porcentaje de votos que obtuvo Obama en la elección para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas? (usa los datos *2008ElectionResult.csv*)
+
+**R:** Realizamos la unión de basos de datos
+
+```{r, warning=FALSE}
+set.seed(156057)
+data_xls <- data.table::fread("data/2008ElectionResult.csv") %>%
+  dplyr::select(state, vote_Obama_pct)
+tabla_aux <- dplyr::mutate(tabla_aux, state = toupper(state))
+data_xls <- dplyr::mutate(data_xls, state = toupper(state))
+
+tabla_aux <- left_join(tabla_aux, data_xls, by = "state")
+
+kable(tabla_aux %>% 
+      dplyr::select(state, perc_very_liberal, encuestas, vote_Obama_pct) %>%
+      head(),
+      caption = "Head por estado con MLE + Obama",
+      digits = 4,
+      format = "latex",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("striped"),
+                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F, fixed_thead = T)
+```
+
+Graficamos... Observamos una **ligera relación negativa: a mayor número de votantes de Obama menor el porcentaje de población que se identifica con la ideología de very liberal**. Esto hace sentido ya que Obama en general fue percibido como un candidato de *centro-izquierda* más que alguien que representará la ideología muy liberal
+
+```{r, warning=FALSE, fig.cap = "MLE vs. Pct de votantes por Obama"}
+set.seed(156057)
+ggplot(tabla_aux, aes(x = vote_Obama_pct, y = perc_very_liberal)) + 
+  geom_point() +
+  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.2) + 
+  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
+  geom_smooth(method = "lm", se = FALSE, color = "#F8766D", linetype = "dashed") +
+  labs(title = "Pct Obama vs. Pct Very Liberal") + 
+  xlab("Pct Obama") + ylab("Pct Very Liberal (MLE)") + 
+  ylim(0,12) +
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+-   Estima el mismo porcentaje (*very liberal*) usando inferencia bayesiana, en particular la familia conjugada beta-binomial. Deberás estimar la proporción de manera independiente para cada estado, sin embargo, utilizarás la misma inicial a lo largo de todos: $Beta(8,160)$.
+
+**R:** Al tener un modelo beta-binomial sabemos que la **posterior tendrá una distribución Beta**. Previo a establecer una función general para la posterior realizamos simulaciones de la inicial para ver que información previa tenemos.
+
+$$
+p(\theta) \propto \theta^{8-1} (1-\theta)^{160-1}
+$$
+
+Como era de esperar tenemos una **media cercana al 5%. No es simétrica ya que considera los posibles escenarios que cubren las colas largas** para porcentajes más altos.
+
+```{r, warning=FALSE, fig.cap = "Distribución a priori: Beta (8,160)"}
+set.seed(156057)
+sim_inicial <- tibble(theta = stats::rbeta(10000,8,160))
+ggplot(sim_inicial) + 
+  geom_histogram(aes(x = theta, y = ..density..), bins = 15, 
+                 fill = "#F8766D",
+                 alpha=0.5) + 
+  geom_vline(xintercept = (8/168), color = "red") +
+  annotate("text", x = (8/168), y = Inf, label = "Media", 
+           vjust = 1, hjust = 0.5,colour = "red")+
+  labs(title = "Distribución Inicial", subtitle = "Beta(8,160)") + 
+  xlab("Theta") + ylab("Densidad") + 
+  ggpubr::theme_pubclean(base_size = 12)
+```
+
+La posterior para el *estado i* estará dada por:
+
+$$
+\begin{aligned}&P(\theta|X) \propto P(X|\theta)P(\theta) \\&P(\theta|X) \propto \theta^{k_i+7}(1-\theta)^{n_{i}+159} \sim Beta(k_i+8,n_i+160)\\\end{aligned}
+$$
+
+Donde:
+
+-   $k_i$: es el número de individuos identificados con la ideología *very liberal*
+
+-   $n_i$: total de la población
+
+Y nuestro estimador puntual será la media posterior, es decir: $\frac{k_i+8}{(k_i+8)+(n_i+160)}$
+
+Dejamos código pero la tabla se muestra hasta el final (El total de estados con sus estimadores)
+
+```{r warning=FALSE}
+set.seed(156057)
+for (i in 1:nrow(tabla_aux)) {
+  alpha <- tabla_aux$`very liberal`[i] + 8
+  beta <- tabla_aux$poblacion[i] + 160
+  tabla_aux$bayesiano[i] <- round((alpha/(alpha+beta)*100),2)
+}
+
+
+kable(tabla_aux %>% 
+      dplyr::select(state, perc_very_liberal, bayesiano, encuestas) %>% 
+      head(),
+      caption = "Head por estado con estimaciones (+Bayesiano)",
+      digits = 4,
+      format = "latex",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("striped"),
+                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F, fixed_thead = T)
+```
 
 -   Para dos de los estados: Idaho y Virginia, adicional a calcular la posterior usando las propiedades de la familia conjugada, utiliza Stan para hacer la inferencia, revisa los diagnósticos de convergencia y describe tus observaciones ($\hat{R}$ y $ESS$).
 
-<!-- -->
+**R:** Realizamos estimaciones vía *Stan*. Dado que es la misma inicial un mismo modelo nos funciona para ambos Estados.
+
+```{r, warning=FALSE}
+set.seed(156057)
+archivo_stan <- file.path("stan/modelo_preg3.stan")
+# compilar
+mod <- cmdstan_model(archivo_stan)
+mod
+```
+
+Pasamos datos, muestreamos y revisamos convergencia
+
+**IDAHO**
+
+```{r, warning=FALSE}
+n <- dplyr::filter(tabla_aux, state == "IDAHO")$poblacion
+y <- dplyr::filter(tabla_aux, state == "IDAHO")$`very liberal`
+datos_lista <- list(n = n, y = y)
+ajuste <- mod$sample(
+  data = datos_lista,
+  seed = 156057,
+  chains = 4,
+  iter_warmup = 5000,
+  iter_sampling = 20000,
+  parallel_chains = 4,
+  show_messages = F)
+ajuste$cmdstan_diagnose()
+idaho <- ajuste$summary() %>%
+  dplyr::mutate(state = "Idaho") %>%
+  dplyr::select(state,variable, mean, sd, rhat, ess_bulk, ess_tail)
+```
+
+**VIRGINIA**
+
+```{r, warning=FALSE}
+n <- dplyr::filter(tabla_aux, state == "VIRGINIA")$poblacion
+y <- dplyr::filter(tabla_aux, state == "VIRGINIA")$`very liberal`
+datos_lista <- list(n = n, y = y)
+ajuste <- mod$sample(
+  data = datos_lista,
+  seed = 156057,
+  chains = 4,
+  iter_warmup = 5000,
+  iter_sampling = 20000,
+  parallel_chains = 4,
+  show_messages = F)
+ajuste$cmdstan_diagnose()
+virginia <- ajuste$summary() %>% 
+  dplyr::mutate(state = "Virginia") %>%
+  dplyr::select(state,variable, mean, sd, rhat, ess_bulk, ess_tail) 
+```
+
+Observamos que el valor de la posterior tiene efectos diferentes entre ambos estados. Para Idaho la media posterior aumenta, pasando de 0.047 a 0.057 y para Virginia disminuye ligeramente de 0.047 a 0.043. Los valores de *rhat* muestran un buen ajuste
+
+```{r, warning=FALSE}
+stan_resumen <- rbind(idaho, virginia)
+kable(stan_resumen,
+      caption = "Estimaciones via Stan para Idaho y Virginia",
+      digits = 4,
+      format = "latex",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("striped"),
+                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F, fixed_thead = T)
+```
 
 -   Utiliza la media posterior de cada estado como estimador puntual y repite las gráficas del inciso anterior.
 
-\*\*Nota:\*\* En problemas como este, donde estamos estimando un parámetro para cada
+**R:** Realizamos las mismas gráficas; sin embargo, ahora utilizamos la media posterior como estimadores puntuales.
 
-grupo (estado e nuestro caso) podemos optar por un modelo jerárquico, en
+**La relación encontrada se mantiene respecto a la relación entre número de encuestas y el porcentaje estimado de la población con ideología** *very liberal*
 
-donde la distribución de las $\theta_j$ no esta dada por la incial
+```{r, warning=FALSE, fig.cap = "Bayes-MLE y Num. Encuestas"}
+set.seed(156057)
+tabla_aux_plot <- 
+  tabla_aux %>%
+  dplyr::select(state, perc_very_liberal, vote_Obama_pct, bayesiano, encuestas) %>%
+  dplyr::rename(MLE=perc_very_liberal) %>%
+  tidyr::pivot_longer(
+    cols = c(MLE, bayesiano),
+    names_to = "Metodologia",
+    values_to = "value"
+  )
+ggplot(tabla_aux_plot, aes(x = encuestas, y = value, color = Metodologia)) + 
+  geom_point() +
+  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
+  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
+  #geom_smooth(method = "lm", se = FALSE, color = Metodologia) +
+  geom_smooth(method = "lm", se = FALSE, 
+              aes(group = Metodologia, color = Metodologia), 
+              linetype = "dashed") +
+  labs(title = "Num. Encuestas vs. Pct Very Liberal", subtitle = "MLE vs. Bayesiano") + 
+  xlab("Num. Encuestas") + ylab("Pct Very Liberal") + 
+  ylim(0,12) +
+  ggpubr::theme_pubclean(base_size = 12)
+```
 
-sino que se modela con un nivel adicional, cuyos parámetros se estiman con los datos
+**La relación encontrada se mantiene respecto a la relación entre porcentaje de población votante por Obama y el porcentaje estimado de la población con ideología** *very liberal*. Un factor a considerar es que en esta gráfica es mucho más notorio que la estimación bayesiana en probabilidades bajas obtenidas por MLE son un poco mayores y probabilidades relativamente más altas por MLE ahora son un poco menores.
 
-y tienen a su vez una distribución incial:
+```{r, warning=FALSE, fig.cap = "Bayes vs. MLE y Pct Obama"}
+ggplot(tabla_aux_plot, aes(x = vote_Obama_pct, y = value, color = Metodologia)) + 
+  geom_point() +
+  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
+  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
+  #geom_smooth(method = "lm", se = FALSE, color = Metodologia) +
+  geom_smooth(method = "lm", se = FALSE, 
+              aes(group = Metodologia, color = Metodologia), 
+              linetype = "dashed") +
+  labs(title = "Num Encuestas vs. Pct Very Liberal", subtitle = "MLE vs. Bayesiano") + 
+  xlab("Pct Obama") + ylab("Pct Very Liberal") + 
+  ylim(0,12) +
+  ggpubr::theme_pubclean(base_size = 12)
+```
 
-$$
-y_j|\theta_j \sim Binomial(n_j, \theta_j)
-$$
+**Apéndice**
 
-$$
-\theta_j \sim Beta(\alpha, \beta)
-$$
+Tabla con todas las estimaciones para todos los estados.
 
-$$
-\alpha \sim g(a_o), \beta \sim f(b_0)
-$$
-
-donde $g(a_0)$ y $f(b_0)$ son las inciales seleccionadas con conocimiento experto.
+```{r warning=FALSE}
+kable(tabla_aux %>%
+        dplyr::select(state, perc_very_liberal, bayesiano) %>%
+        dplyr::rename(MLE = perc_very_liberal, Bayesiano = bayesiano), 
+      caption = "Estimaciones por estado",
+      digits = 4,
+      format = "latex",
+      booktabs = T) %>%
+  kable_styling(latex_options = c("striped"),
+                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                full_width = F, fixed_thead = T)
+```

@@ -234,6 +234,7 @@ Calculamos nuestro valor p.
 valor_p <- mean(sims_tbl$lambda >= lambda_obs)
 print(paste0("El valor p asociado a esta prueba es: ", round(valor_p,2)))
 ```
+
 Por lo que **no encontramos evidencia encontra de la hipótesis nula**. Hace sentido ya que desde la Lambda observada el valor es cercano a 0, por lo que la nula tiene bastante verosimilitud respecto a lo que los datos indican. 
 
 ## Prueba Wald
