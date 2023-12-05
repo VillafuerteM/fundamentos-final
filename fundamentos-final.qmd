@@ -890,11 +890,9 @@ A falta de más información se decidió tomar la columna *weight* como factor d
 
 -   Estima el porcentaje de la población de cada estado (excluyendo Alaska, Hawai, y DC) que se considera *very liberal*, utilizando el estimador de máxima verosimilitud.
 
--   Grafica en el eje *x* el número de encuestas para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas?
-
 **Respuesta:** Excluimos los estados mencionados y utilizamos la variable *weight* como factor de expansión para realizar los calculos del porcentaje de *very liberal*. Además cada registro lo tomamos en cuenta como si fuera 1 encuesta, entonces entendemos por número de encuestas como número de registros agrupados por la variable *state*. El estimador de **máxima verosimilitud** para una proporción, *very liberal* como se ha demostrado varias veces en clase y en la pregunta 2 será $\frac{x_{very.liberal}}{n}$
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, message=FALSE}
 set.seed(156057)
 # Consideramos que la población total de mi estado es la suma de "weight" 
 very_liberal <- 
@@ -921,75 +919,113 @@ poblacion_encuestas <-
 tabla_aux <- dplyr::left_join(very_liberal, 
                               poblacion_encuestas, 
                               by = "state")
-
+# se muestra a continuación
 tabla_aux <- tabla_aux %>%
   dplyr::mutate(perc_very_liberal = round((`very liberal`/poblacion)*100,2))
+```
 
+```{r echo=FALSE}
 kable(tabla_aux %>% 
       dplyr::select(state, perc_very_liberal, encuestas) %>% head(),
       caption = "Head por estado con MLE",
       digits = 4,
       format = "latex",
       booktabs = T) %>%
-  kable_styling(latex_options = c("striped"),
+  kable_styling(latex_options = c("striped",'hold_position'),
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"),
                 full_width = F, fixed_thead = T)
 ```
 
+{{< pagebreak >}}
+
+-   Grafica en el eje *x* el número de encuestas para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas?
+
 Graficamos... Observamos una **ligera relación positiva: a mayor número de encuestas mayor el porcentaje de población que se identifican con la ideología de very liberal**. Esto es de llamar la atención, no deberían de depender nuestros resultados del número de encuestas podría haber problemas con el muestro. Sin embargo, al estar hablando de porcentajes "relativamente bajos" el encuestar podría llegarse a ver esta relación.
 
-```{r, warning=FALSE, fig.cap= "Pct Very Liberal vs. Num. Encuestas (archivo DTA)"}
+```{r}
+#| warning=FALSE, 
+#| fig.cap= "Pct Very Liberal vs. Num. Encuestas (archivo DTA)",
+#| echo=FALSE,
+#| message=FALSE
+
 set.seed(156057)
 ggplot(tabla_aux, aes(x = encuestas, y = perc_very_liberal)) + 
   geom_point() +
-  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
-  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
-  geom_smooth(method = "lm", se = FALSE, color = "#F8766D", linetype = "dashed") +
+  geom_text_repel(aes(label = state), 
+                  box.padding = 0.5, 
+                  size = 1.5) +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              color = "#F8766D", 
+              linetype = "dashed") +
   labs(title = "Num. Encuestas vs. Pct Very Liberal") + 
-  xlab("Num Encuestas") + ylab("Pct Very Liberal (MLE)") + 
+  xlab("Num Encuestas") + 
+  ylab("Pct Very Liberal (MLE)") + 
   ylim(0,12) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
+
+{{< pagebreak >}}
 
 -   Grafica en el eje *x* el porcentaje de votos que obtuvo Obama en la elección para cada estado y en el eje *y* la estimación de máxima verosimilitud para *very liberal*. ¿Qué observas? (usa los datos *2008ElectionResult.csv*)
 
 **Respuesta:** Realizamos la unión de basos de datos
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo=FALSE}
 set.seed(156057)
 data_xls <- data.table::fread("data/2008ElectionResult.csv") %>%
   dplyr::select(state, vote_Obama_pct)
+
 tabla_aux <- dplyr::mutate(tabla_aux, state = toupper(state))
+
 data_xls <- dplyr::mutate(data_xls, state = toupper(state))
 
 tabla_aux <- left_join(tabla_aux, data_xls, by = "state")
 
 kable(tabla_aux %>% 
-      dplyr::select(state, perc_very_liberal, encuestas, vote_Obama_pct) %>%
+      dplyr::select(state, 
+                    perc_very_liberal, 
+                    encuestas,
+                    vote_Obama_pct) %>%
       head(),
       caption = "Head por estado con MLE + Obama",
       digits = 4,
       format = "latex",
       booktabs = T) %>%
-  kable_styling(latex_options = c("striped"),
-                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+  kable_styling(latex_options = c("striped", 
+                                  'hold_position'),
+                bootstrap_options = c("striped", 
+                                      "hover", 
+                                      "condensed", 
+                                      "responsive"),
                 full_width = F, fixed_thead = T)
 ```
 
 Graficamos... Observamos una **ligera relación negativa: a mayor número de votantes de Obama menor el porcentaje de población que se identifica con la ideología de very liberal**. Esto hace sentido ya que Obama en general fue percibido como un candidato de *centro-izquierda* más que alguien que representará la ideología muy liberal
 
-```{r, warning=FALSE, fig.cap = "MLE vs. Pct de votantes por Obama"}
+```{r}
+#| warning=FALSE, 
+#| fig.cap = "MLE vs. Pct de votantes por Obama",
+#| echo=FALSE
+
 set.seed(156057)
 ggplot(tabla_aux, aes(x = vote_Obama_pct, y = perc_very_liberal)) + 
   geom_point() +
-  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.2) + 
-  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
-  geom_smooth(method = "lm", se = FALSE, color = "#F8766D", linetype = "dashed") +
+  geom_text_repel(aes(label = state), 
+                  box.padding = 0.5, 
+                  size = 1.2) + 
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              color = "#F8766D", 
+              linetype = "dashed") +
   labs(title = "Pct Obama vs. Pct Very Liberal") + 
-  xlab("Pct Obama") + ylab("Pct Very Liberal (MLE)") + 
+  xlab("Pct Obama") + 
+  ylab("Pct Very Liberal (MLE)") + 
   ylim(0,12) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
+
+{{< pagebreak >}}
 
 -   Estima el mismo porcentaje (*very liberal*) usando inferencia bayesiana, en particular la familia conjugada beta-binomial. Deberás estimar la proporción de manera independiente para cada estado, sin embargo, utilizarás la misma inicial a lo largo de todos: $Beta(8,160)$.
 
@@ -1001,18 +1037,32 @@ $$
 
 Como era de esperar tenemos una **media cercana al 5%. No es simétrica ya que considera los posibles escenarios que cubren las colas largas** para porcentajes más altos.
 
-```{r, warning=FALSE, fig.cap = "Distribución a priori: Beta (8,160)"}
+```{r, warning=FALSE}
 set.seed(156057)
 sim_inicial <- tibble(theta = stats::rbeta(10000,8,160))
+```
+
+```{r echo=FALSE, fig.cap = "Distribución a priori: Beta (8,160)"}
 ggplot(sim_inicial) + 
-  geom_histogram(aes(x = theta, y = ..density..), bins = 15, 
+  geom_histogram(aes(x = theta, 
+                     y = ..density..),
+                 bins = 15, 
                  fill = "#F8766D",
                  alpha=0.5) + 
-  geom_vline(xintercept = (8/168), color = "red") +
-  annotate("text", x = (8/168), y = Inf, label = "Media", 
-           vjust = 1, hjust = 0.5,colour = "red")+
-  labs(title = "Distribución Inicial", subtitle = "Beta(8,160)") + 
-  xlab("Theta") + ylab("Densidad") + 
+  geom_vline(xintercept = (8/168), 
+             color = "red",
+             linetype='dashed') +
+  annotate("text", 
+           x = (8/168), 
+           y = Inf, 
+           label = "Media", 
+           vjust = 1, 
+           hjust = 0.5,
+           colour = "red")+
+  labs(title = "Distribución Inicial", 
+       subtitle = "Beta(8,160)") + 
+  xlab("Theta") + 
+  ylab("Densidad") + 
   ggpubr::theme_pubclean(base_size = 12)
 ```
 
@@ -1039,19 +1089,29 @@ for (i in 1:nrow(tabla_aux)) {
   beta <- tabla_aux$poblacion[i] + 160
   tabla_aux$bayesiano[i] <- round((alpha/(alpha+beta)*100),2)
 }
+```
 
-
+```{r echo=FALSE}
 kable(tabla_aux %>% 
-      dplyr::select(state, perc_very_liberal, bayesiano, encuestas) %>% 
+      dplyr::select(state, 
+                    perc_very_liberal, 
+                    bayesiano, 
+                    encuestas) %>% 
       head(),
       caption = "Head por estado con estimaciones (+Bayesiano)",
       digits = 4,
       format = "latex",
       booktabs = T) %>%
-  kable_styling(latex_options = c("striped"),
-                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+  kable_styling(latex_options = c("striped", 
+                                  'hold_position'),
+                bootstrap_options = c("striped", 
+                                      "hover", 
+                                      "condensed", 
+                                      "responsive"),
                 full_width = F, fixed_thead = T)
 ```
+
+{{< pagebreak >}}
 
 -   Para dos de los estados: Idaho y Virginia, adicional a calcular la posterior usando las propiedades de la familia conjugada, utiliza Stan para hacer la inferencia, revisa los diagnósticos de convergencia y describe tus observaciones ($\hat{R}$ y $ESS$).
 
@@ -1066,6 +1126,8 @@ mod
 ```
 
 Pasamos datos, muestreamos y revisamos convergencia
+
+{{< pagebreak >}}
 
 **IDAHO**
 
@@ -1087,6 +1149,8 @@ idaho <- ajuste$summary() %>%
   dplyr::select(state,variable, mean, sd, rhat, ess_bulk, ess_tail)
 ```
 
+{{< pagebreak >}}
+
 **VIRGINIA**
 
 ```{r, warning=FALSE}
@@ -1107,17 +1171,23 @@ virginia <- ajuste$summary() %>%
   dplyr::select(state,variable, mean, sd, rhat, ess_bulk, ess_tail) 
 ```
 
+{{< pagebreak >}}
+
 Observamos que el valor de la posterior tiene efectos diferentes entre ambos estados. Para Idaho la media posterior aumenta, pasando de 0.047 a 0.057 y para Virginia disminuye ligeramente de 0.047 a 0.043. Los valores de *rhat* muestran un buen ajuste
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, echo=FALSE}
 stan_resumen <- rbind(idaho, virginia)
 kable(stan_resumen,
       caption = "Estimaciones via Stan para Idaho y Virginia",
       digits = 4,
       format = "latex",
       booktabs = T) %>%
-  kable_styling(latex_options = c("striped"),
-                bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+  kable_styling(latex_options = c("striped",
+                                  'hold_position'),
+                bootstrap_options = c("striped", 
+                                      "hover", 
+                                      "condensed", 
+                                      "responsive"),
                 full_width = F, fixed_thead = T)
 ```
 
@@ -1129,25 +1199,36 @@ kable(stan_resumen,
 
 ```{r, warning=FALSE, fig.cap = "Bayes-MLE y Num. Encuestas"}
 set.seed(156057)
-tabla_aux_plot <- 
-  tabla_aux %>%
-  dplyr::select(state, perc_very_liberal, vote_Obama_pct, bayesiano, encuestas) %>%
+tabla_aux_plot <- tabla_aux %>%
+  dplyr::select(state, 
+                perc_very_liberal, 
+                vote_Obama_pct, 
+                bayesiano, 
+                encuestas) %>%
   dplyr::rename(MLE=perc_very_liberal) %>%
   tidyr::pivot_longer(
     cols = c(MLE, bayesiano),
     names_to = "Metodologia",
-    values_to = "value"
-  )
-ggplot(tabla_aux_plot, aes(x = encuestas, y = value, color = Metodologia)) + 
+    values_to = "value")
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+ggplot(tabla_aux_plot, aes(x = encuestas, 
+                           y = value, 
+                           color = Metodologia)) + 
   geom_point() +
-  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
-  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
-  #geom_smooth(method = "lm", se = FALSE, color = Metodologia) +
-  geom_smooth(method = "lm", se = FALSE, 
-              aes(group = Metodologia, color = Metodologia), 
+  geom_text_repel(aes(label = state), 
+                  box.padding = 0.5, 
+                  size = 1.5) +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              aes(group = Metodologia, 
+                  color = Metodologia), 
               linetype = "dashed") +
-  labs(title = "Num. Encuestas vs. Pct Very Liberal", subtitle = "MLE vs. Bayesiano") + 
-  xlab("Num. Encuestas") + ylab("Pct Very Liberal") + 
+  labs(title = "Num. Encuestas vs. Pct Very Liberal", 
+       subtitle = "MLE vs. Bayesiano") + 
+  xlab("Num. Encuestas") + 
+  ylab("Pct Very Liberal") + 
   ylim(0,12) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
@@ -1155,19 +1236,29 @@ ggplot(tabla_aux_plot, aes(x = encuestas, y = value, color = Metodologia)) +
 **La relación encontrada se mantiene respecto a la relación entre porcentaje de población votante por Obama y el porcentaje estimado de la población con ideología** *very liberal*. Un factor a considerar es que en esta gráfica es mucho más notorio que la estimación bayesiana en probabilidades bajas obtenidas por MLE son un poco mayores y probabilidades relativamente más altas por MLE ahora son un poco menores.
 
 ```{r, warning=FALSE, fig.cap = "Bayes vs. MLE y Pct Obama"}
-ggplot(tabla_aux_plot, aes(x = vote_Obama_pct, y = value, color = Metodologia)) + 
+#| echo=FALSE,
+#| message=FALSE
+
+ggplot(tabla_aux_plot, aes(x = vote_Obama_pct, 
+                           y = value, color = Metodologia)) + 
   geom_point() +
-  geom_text_repel(aes(label = state), box.padding = 0.5, size = 1.5) +
-  #geom_text(aes(label = state), hjust = 1.5, vjust = 0.5, size = 1.5) + 
-  #geom_smooth(method = "lm", se = FALSE, color = Metodologia) +
-  geom_smooth(method = "lm", se = FALSE, 
-              aes(group = Metodologia, color = Metodologia), 
+  geom_text_repel(aes(label = state), 
+                  box.padding = 0.5, 
+                  size = 1.5) +
+  geom_smooth(method = "lm", 
+              se = FALSE, 
+              aes(group = Metodologia, 
+                  color = Metodologia), 
               linetype = "dashed") +
-  labs(title = "Num Encuestas vs. Pct Very Liberal", subtitle = "MLE vs. Bayesiano") + 
-  xlab("Pct Obama") + ylab("Pct Very Liberal") + 
+  labs(title = "Num Encuestas vs. Pct Very Liberal", 
+       subtitle = "MLE vs. Bayesiano") + 
+  xlab("Pct Obama") + 
+  ylab("Pct Very Liberal") + 
   ylim(0,12) +
   ggpubr::theme_pubclean(base_size = 12)
 ```
+
+{{< pagebreak >}}
 
 **Apéndice**
 
