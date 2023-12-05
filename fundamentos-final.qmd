@@ -1262,7 +1262,7 @@ ggplot(tabla_aux_plot, aes(x = vote_Obama_pct,
 
 **Apéndice**
 
-Tabla con todas las estimaciones para todos los estados.
+Tabla con todas las estimaciones para todos los estados.\
 
 ```{r warning=FALSE}
 kable(tabla_aux %>%
@@ -1276,3 +1276,7 @@ kable(tabla_aux %>%
                 bootstrap_options = c("striped", "hover", "condensed", "responsive"),
                 full_width = F, fixed_thead = T)
 ```
+
+**Repositorio de GitHub**
+
+Todo el código generado para contestar el examen está disponible [aquí](https://github.com/VillafuerteM/fundamentos-final). Si hubiera dudas de la generación de algún gráfico o metodología, el código está abierto para consulta.
