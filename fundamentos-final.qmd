@@ -1277,6 +1277,8 @@ kable(tabla_aux %>%
                 full_width = F, fixed_thead = T)
 ```
 
+{{< pagebreak >}}
+
 **Repositorio de GitHub**
 
 Todo el código generado para contestar el examen está disponible [aquí](https://github.com/VillafuerteM/fundamentos-final). Si hubiera dudas de la generación de algún gráfico o metodología, el código está abierto para consulta.
